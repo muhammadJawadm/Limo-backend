@@ -1,0 +1,1509 @@
+{
+  "info": {
+    "name": "PRVYN Limo App Backend",
+    "description": "Complete API setup for Auth, Driver, Vehicle Categories, Bookings, and Notifications.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "driverToken",
+      "value": ""
+    },
+    {
+      "key": "customerEmail",
+      "value": "john.customer@example.com"
+    },
+    {
+      "key": "customerPassword",
+      "value": "Password@123"
+    },
+    {
+      "key": "driverEmail",
+      "value": "john.driver@example.com"
+    },
+    {
+      "key": "driverPassword",
+      "value": "Password@123"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Password@123"
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "rideId",
+      "value": ""
+    },
+    {
+      "key": "vehicleCategoryId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "onboardingStep",
+      "value": "company-information"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Get Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"{{customerEmail}}\",\n  \"phone\": \"+1234567890\",\n  \"password\": \"{{customerPassword}}\",\n  \"location\": \"Houston\",\n  \"role\": \"customer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Driver\",\n  \"email\": \"{{driverEmail}}\",\n  \"phone\": \"+1234567999\",\n  \"password\": \"{{driverPassword}}\",\n  \"location\": \"Houston\",\n  \"role\": \"driver\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/resend-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "resend-otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-reset-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                {
+                  "name": "Login Driver (Save driverToken)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Save driver token from response', function () {",
+                          "    const body = pm.response.json();",
+                          "    pm.expect(body.success).to.eql(true);",
+                          "    pm.expect(body.token).to.be.a('string').and.not.empty;",
+                          "    pm.collectionVariables.set('driverToken', body.token);",
+                          "});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/auth/login",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "login"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "name": "Login Admin (Save adminToken)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Save admin token from response', function () {",
+                          "    const body = pm.response.json();",
+                          "    pm.expect(body.success).to.eql(true);",
+                          "    pm.expect(body.token).to.be.a('string').and.not.empty;",
+                          "    pm.collectionVariables.set('adminToken', body.token);",
+                          "});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/auth/login",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "login"
+                      ]
+                    }
+                  }
+                }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Driver (Save driverToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Save driver token from response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('driverToken', body.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Admin (Save adminToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Save admin token from response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('adminToken', body.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Driver (Protected)",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Onboarding",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Onboarding Step",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/{{onboardingStep}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "{{onboardingStep}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Company Information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Sunrise Correlation\",\n  \"companyAddress\": {\n    \"country\": \"USA\",\n    \"city\": \"Houston\",\n    \"street\": \"Main Street\",\n    \"postalCode\": \"77001\",\n    \"state\": \"TX\"\n  },\n  \"taxIdentificationNumber\": \"12-3456789\",\n  \"businessRegistrationNumber\": \"BRN-001122\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/company-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "company-information"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Fleet Information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priorLimoExperience\": true,\n  \"electricVehicleFleet\": false,\n  \"femaleChauffeurs\": true,\n  \"numberOfChauffeurs\": 3,\n  \"numberOfFirstClassVehicles\": 1,\n  \"numberOfBusinessClassVans\": 1,\n  \"businessClassVansDescription\": \"Mercedes Sprinter 2023\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/fleet-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "fleet-information"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update First Chauffeur Information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"useAuthorizedRepresentativeDetails\": false,\n  \"firstName\": \"Jayson\",\n  \"lastName\": \"Smith\",\n  \"email\": \"jayson@example.com\",\n  \"phone\": \"+1234567899\",\n  \"driverLicenseId\": \"DL-998877\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/first-chauffeur-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "first-chauffeur-information"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update First Vehicle Information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearOfManufacture\": \"2024\",\n  \"brandAndModel\": \"Mercedes S Class\",\n  \"vehicleClass\": \"Luxury\",\n  \"color\": \"Black\",\n  \"passengerCapacity\": 4,\n  \"luggageCapacity\": 3,\n  \"wifi\": true,\n  \"smokingAllowed\": false,\n  \"vehicleNumberPlate\": \"TX-1122\",\n  \"vehicleVIN\": \"VIN123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/first-vehicle-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "first-vehicle-information"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Required Documents",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyDocuments\": {\n    \"w9Form\": {\n      \"fileUrl\": \"https://example.com/w9.pdf\",\n      \"status\": \"uploaded\"\n    }\n  },\n  \"chauffeurDocuments\": {\n    \"profilePicture\": {\n      \"fileUrl\": \"https://example.com/profile.jpg\",\n      \"status\": \"uploaded\"\n    }\n  },\n  \"vehicleDocuments\": {\n    \"airportPermit\": {\n      \"fileUrl\": \"https://example.com/permit.pdf\",\n      \"status\": \"uploaded\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/required-documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "required-documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Partner Training",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modules\": [\n    { \"moduleNumber\": 1, \"title\": \"Who We Are\", \"completed\": true, \"progressPercentage\": 100 },\n    { \"moduleNumber\": 2, \"title\": \"The Chauffeur App\", \"completed\": false, \"progressPercentage\": 25 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/partner-training",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "partner-training"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Contract Agreement",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signed\": true,\n  \"confirmationAgreement\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/contract-agreement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "contract-agreement"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentInformation\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/payment-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "payment-information"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Availability",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeZone\": \"America/Chicago\",\n  \"weeklySchedule\": {\n    \"monday\": { \"startTime\": \"09:00 AM\", \"endTime\": \"06:00 PM\", \"enabled\": true },\n    \"tuesday\": { \"startTime\": \"09:00 AM\", \"endTime\": \"06:00 PM\", \"enabled\": true }\n  },\n  \"notes\": \"Available weekdays\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "availability"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/onboarding/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "onboarding",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Driver Rides",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Save first ride id when available', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    if (Array.isArray(body.data) && body.data.length > 0 && body.data[0].id) {",
+                  "        pm.collectionVariables.set('rideId', body.data[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/rides?page=1&limit=10&tab=upcoming&scope=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "rides"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "tab",
+                  "value": "upcoming"
+                },
+                {
+                  "key": "scope",
+                  "value": "all"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Driver Ride By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/rides/{{rideId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "rides",
+                "{{rideId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Ride To Me",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/rides/{{rideId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "rides",
+                "{{rideId}}",
+                "assign"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update My Ride Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideStatus\": \"ongoing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/rides/{{rideId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "rides",
+                "{{rideId}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Driver Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/driver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "driver"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/customer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "customer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save notificationId', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    if (body.data && body.data.id) {",
+                  "        pm.collectionVariables.set('notificationId', body.data.id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientRole\": \"customer\",\n  \"recipientUserId\": \"\",\n  \"title\": \"Booking Update\",\n  \"message\": \"Your booking has been updated by admin.\",\n  \"type\": \"general\",\n  \"isRead\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Notification",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Booking Update\",\n  \"message\": \"This notification has been updated.\",\n  \"isRead\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vehicle Categories",
+      "item": [
+        {
+          "name": "Create Vehicle Category (Driver)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save vehicleCategoryId', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    if (body.data && body.data._id) {",
+                  "        pm.collectionVariables.set('vehicleCategoryId', body.data._id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Sedan\",\n  \"type\": \"airport\",\n  \"classification\": \"sedan\",\n  \"capacity\": {\n    \"luggage\": 3,\n    \"passengers\": 4\n  },\n  \"baseFare\": 65,\n  \"perMileRate\": 3.5,\n  \"picture\": \"https://example.com/sedan.png\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicle-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vehicle-categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Vehicle Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicle-categories?classification=sedan&type=airport&name=Premium",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vehicle-categories"
+              ],
+              "query": [
+                {
+                  "key": "classification",
+                  "value": "sedan"
+                },
+                {
+                  "key": "type",
+                  "value": "airport"
+                },
+                {
+                  "key": "name",
+                  "value": "Premium"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Vehicle Category By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicle-categories/{{vehicleCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vehicle-categories",
+                "{{vehicleCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Vehicle Category (Driver)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseFare\": 75,\n  \"perMileRate\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicle-categories/{{vehicleCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vehicle-categories",
+                "{{vehicleCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Vehicle Category (Driver)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicle-categories/{{vehicleCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vehicle-categories",
+                "{{vehicleCategoryId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Guest Booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save bookingId', function () {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.data && body.data._id) {",
+                  "        pm.collectionVariables.set('bookingId', body.data._id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"ptop\",\n  \"pickupLocation\": \"IAH Airport\",\n  \"stopLocation\": [\"Downtown\"],\n  \"dropoffLocation\": \"Galleria\",\n  \"date\": \"2026-04-30T00:00:00.000Z\",\n  \"time\": \"09:00 AM\",\n  \"vehicleCategory\": \"{{vehicleCategoryId}}\",\n  \"flightNumber\": \"AA102\",\n  \"noOfPassengers\": 2,\n  \"luggage\": 2,\n  \"childSeatRequired\": false,\n  \"bookerDetails\": {\n    \"firstName\": \"Guest\",\n    \"lastName\": \"User\",\n    \"email\": \"guest@example.com\",\n    \"phone\": \"+1234567000\"\n  },\n  \"passengerDetails\": {\n    \"firstName\": \"Guest\",\n    \"lastName\": \"Passenger\",\n    \"email\": \"passenger@example.com\",\n    \"phone\": \"+1234567001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/guest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "guest"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Booking (Protected)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save bookingId', function () {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.data && body.data._id) {",
+                  "        pm.collectionVariables.set('bookingId', body.data._id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"hourly\",\n  \"pickupLocation\": \"Houston Downtown\",\n  \"stopLocation\": [\"Museum District\"],\n  \"dropoffLocation\": \"Houston Downtown\",\n  \"date\": \"2026-05-01T00:00:00.000Z\",\n  \"time\": \"10:30 AM\",\n  \"hours\": 3,\n  \"vehicleCategory\": \"{{vehicleCategoryId}}\",\n  \"noOfPassengers\": 3,\n  \"luggage\": 2,\n  \"childSeatRequired\": true,\n  \"childSeats\": {\n    \"infant\": 1,\n    \"toddler\": 0,\n    \"booster\": 0\n  },\n  \"passengerDetails\": {\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"{{customerEmail}}\",\n    \"phone\": \"+1234567890\"\n  },\n  \"specialInstructions\": \"Call before arrival\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Bookings (Protected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Booking By Id (Protected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Booking (Protected)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time\": \"11:00 AM\",\n  \"specialInstructions\": \"Driver wait 10 mins\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Booking (Protected)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

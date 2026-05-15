@@ -1,0 +1,486 @@
+// ============================================================
+// Prisma Schema
+// Database: PostgreSQL
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  customer
+  driver
+  admin
+}
+
+enum BookingType {
+  ptop
+  hourly
+}
+
+enum RideStatus {
+  upcoming
+  confirmed
+  ongoing
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum SenderRole {
+  customer
+  driver
+  admin
+}
+
+enum DocumentStatus {
+  missing
+  uploaded
+  rejected
+  approved
+}
+
+enum VehicleClassification {
+  sedan
+  suv
+  van
+  luxury
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id                  String    @id @default(uuid())
+  firstName           String
+  lastName            String
+  email               String    @unique
+  phone               String    @unique
+  password            String
+  location            String
+  role                Role      @default(customer)
+  companyName         String?
+  isVerified          Boolean   @default(false)
+  onboardingCompleted Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  bookings            Booking[] @relation("UserBookings")
+  assignedBookings    Booking[] @relation("DriverBookings")
+  messages            Message[]
+  otps                Otp[]
+  customerProfile     CustomerProfile?
+  driver              Driver?
+  notifications       Notification[] @relation("UserNotifications")
+}
+
+// ============================================================
+// CUSTOMER PROFILE
+// ============================================================
+
+model CustomerProfile {
+  id              String           @id @default(uuid())
+  userId          String           @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Preferences (flattened from nested object)
+  preferredVehicleClass  String?
+  specialRequirements    String?
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedAddresses  SavedAddress[]
+}
+
+model SavedAddress {
+  id                String          @id @default(uuid())
+  customerProfileId String
+  label             String?
+  address           String?
+
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// OTP
+// ============================================================
+
+model Otp {
+  id               String   @id @default(uuid())
+  userId           String
+  otp              String
+  otpExpiry        DateTime
+  isResetVerified  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([otpExpiry])
+}
+
+// ============================================================
+// VEHICLE CATEGORY
+// ============================================================
+
+model VehicleCategory {
+  id               String                @id @default(uuid())
+  name             String
+  type             String
+  classification   VehicleClassification
+  luggageCapacity  Int
+  passengerCapacity Int
+  baseFare         Float
+  perMileRate      Float
+  picture          String
+
+  // Relations
+  bookings         Booking[]
+}
+
+// ============================================================
+// DRIVER
+// ============================================================
+
+model Driver {
+  id                         String   @id @default(uuid())
+  userId                     String   @unique
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  // Company Info
+  companyName                String
+  companyType                String
+  taxIdentificationNumber    String
+  businessRegistrationNumber String
+
+  // Company Address (flattened)
+  companyCountry             String?
+  companyCity                String?
+  companyStreet              String?
+  companyPostalCode          String?
+  companyState               String?
+
+  // Fleet Information (flattened)
+  priorLimoExperience        Boolean?
+  electricVehicleFleet       Boolean?
+  femaleChauffeurs           Boolean?
+  numberOfChauffeurs         Int?
+  numberOfFirstClassVehicles Int?
+  numberOfBusinessClassVans  Int?
+  businessClassVansDescription String?
+
+  // First Chauffeur Information (flattened)
+  useAuthorizedRepresentativeDetails Boolean @default(false)
+  chauffeurFirstName         String?
+  chauffeurLastName          String?
+  chauffeurEmail             String?
+  chauffeurPhone             String?
+  chauffeurDriverLicenseId   String?
+
+  // First Vehicle Information (flattened)
+  vehicleYearOfManufacture   String?
+  vehicleBrandAndModel       String?
+  vehicleClass               String?
+  vehicleColor               String?
+  vehiclePassengerCapacity   Int?
+  vehicleLuggageCapacity     Int?
+  vehicleWifi                Boolean?
+  vehicleSmokingAllowed      Boolean?
+  vehicleNumberPlate         String?
+  vehicleVIN                 String?
+
+  // Contract Agreement (flattened)
+  contractSigned             Boolean @default(false)
+  contractConfirmationAgreement Boolean @default(false)
+  contractPlace              String?
+
+  // Payment & Stripe
+  paymentInformation         Boolean @default(false)
+  stripeAccountId            String?
+  stripeOnboarded            Boolean @default(false)
+
+  // Availability (flattened)
+  availabilityTimeZone       String  @default("America/Chicago")
+  mondayEnabled              Boolean @default(true)
+  mondayStart                String  @default("09:00 AM")
+  mondayEnd                  String  @default("06:00 PM")
+  tuesdayEnabled             Boolean @default(false)
+  tuesdayStart               String  @default("09:00 AM")
+  tuesdayEnd                 String  @default("06:00 PM")
+  wednesdayEnabled           Boolean @default(true)
+  wednesdayStart             String  @default("09:00 AM")
+  wednesdayEnd               String  @default("09:00 PM")
+  thursdayEnabled            Boolean @default(true)
+  thursdayStart              String  @default("09:00 AM")
+  thursdayEnd                String  @default("09:00 PM")
+  fridayEnabled              Boolean @default(true)
+  fridayStart                String  @default("09:00 AM")
+  fridayEnd                  String  @default("09:00 PM")
+  saturdayEnabled            Boolean @default(false)
+  saturdayStart              String  @default("09:00 AM")
+  saturdayEnd                String  @default("09:00 PM")
+  sundayEnabled              Boolean @default(true)
+  sundayStart                String  @default("09:00 AM")
+  sundayEnd                  String  @default("09:00 PM")
+  submittedApplication       Boolean @default(false)
+  submittedAt                DateTime?
+  availabilityNotes          String?
+
+  // Partner Training
+  trainingTotalModules       Int     @default(15)
+  trainingCompletedModules   Int     @default(0)
+  trainingIsComplete         Boolean @default(false)
+
+  // Relations
+  user                       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles                   Vehicle[]
+  trainingModules            TrainingModule[]
+  requiredDocuments          DriverDocument?
+}
+
+// ============================================================
+// DRIVER — TRAINING MODULES
+// ============================================================
+
+model TrainingModule {
+  id                 String  @id @default(uuid())
+  driverId           String
+  moduleNumber       Int
+  title              String
+  progressPercentage Int     @default(0)
+  completed          Boolean @default(false)
+
+  driver             Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// DRIVER — REQUIRED DOCUMENTS
+// (All document items flattened into one table)
+// ============================================================
+
+model DriverDocument {
+  id                                        String  @id @default(uuid())
+  driverId                                  String  @unique
+
+  // Company Documents
+  w9FormUrl                                 String?
+  w9FormExpiry                              DateTime?
+  w9FormStatus                              DocumentStatus @default(missing)
+
+  articleOfIncorporationUrl                 String?
+  articleOfIncorporationExpiry              DateTime?
+  articleOfIncorporationStatus              DocumentStatus @default(missing)
+
+  einCertificateUrl                         String?
+  einCertificateExpiry                      DateTime?
+  einCertificateStatus                      DocumentStatus @default(missing)
+
+  cityPermitUrl                             String?
+  cityPermitExpiry                          DateTime?
+  cityPermitStatus                          DocumentStatus @default(missing)
+
+  voidCheckUrl                              String?
+  voidCheckExpiry                           DateTime?
+  voidCheckStatus                           DocumentStatus @default(missing)
+
+  // Chauffeur Documents
+  profilePictureUrl                         String?
+  profilePictureExpiry                      DateTime?
+  profilePictureStatus                      DocumentStatus @default(missing)
+
+  licensePictureUrl                         String?
+  licensePictureExpiry                      DateTime?
+  licensePictureStatus                      DocumentStatus @default(missing)
+
+  // Vehicle Documents
+  limoLicenseDecalUrl                       String?
+  limoLicenseDecalExpiry                    DateTime?
+  limoLicenseDecalStatus                    DocumentStatus @default(missing)
+
+  liabilityInsuranceUrl                     String?
+  liabilityInsuranceExpiry                  DateTime?
+  liabilityInsuranceStatus                  DocumentStatus @default(missing)
+
+  vehicleRegistrationUrl                    String?
+  vehicleRegistrationExpiry                 DateTime?
+  vehicleRegistrationStatus                 DocumentStatus @default(missing)
+
+  cityPermittedStickerUrl                   String?
+  cityPermittedStickerExpiry                DateTime?
+  cityPermittedStickerStatus                DocumentStatus @default(missing)
+
+  licensePlatePhotoUrl                      String?
+  licensePlatePhotoExpiry                   DateTime?
+  licensePlatePhotoStatus                   DocumentStatus @default(missing)
+
+  airportPermitUrl                          String?
+  airportPermitExpiry                       DateTime?
+  airportPermitStatus                       DocumentStatus @default(missing)
+
+  driver                                    Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// VEHICLE
+// ============================================================
+
+model Vehicle {
+  id               String                @id @default(uuid())
+  driverId         String
+  name             String
+  vehicleType      String
+  vehicleNumber    String
+  vehicleModel     String
+  vehicleColor     String
+  classification   VehicleClassification
+  luggageCapacity  Int
+  passengerCapacity Int
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  driver           Driver                @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// BOOKING
+// ============================================================
+
+model Booking {
+  id                  String        @id @default(uuid())
+  type                BookingType
+  userId              String?
+  pickupLocation      String
+  dropoffLocation     String
+  date                DateTime
+  time                String
+  hours               Int?
+  vehicleCategoryId   String?
+  assignedDriverId    String?
+  confNumber          String?
+  rideStatus          RideStatus    @default(upcoming)
+  totalAmount         Float         @default(0)
+  flightNumber        String?
+  noOfPassengers      Int?          @default(0)
+  luggage             Int?          @default(0)
+  childSeatRequired   Boolean       @default(false)
+  isGuest             Boolean       @default(false)
+  specialInstructions String?
+  isComplete          Boolean       @default(false)
+
+  // Child Seats (flattened)
+  childSeatInfant     Int           @default(0)
+  childSeatToddler    Int           @default(0)
+  childSeatBooster    Int           @default(0)
+
+  // Passenger Details (flattened)
+  passengerFirstName  String?
+  passengerLastName   String?
+  passengerEmail      String?
+  passengerPhone      String?
+
+  // Booker Details (flattened)
+  bookerFirstName     String?
+  bookerLastName      String?
+  bookerEmail         String?
+  bookerPhone         String?
+
+  // Charges and Fees (flattened)
+  tripPrice           Float         @default(0)
+  childSeatsFee       Float         @default(0)
+  otherFees           Float         @default(0)
+
+  // Payment Info (flattened)
+  cardHolderName      String?
+  cardNumberLast4     String?
+  expiryDate          String?
+  billingAddress      String?
+
+  // Payment Status
+  paymentStatus       PaymentStatus @default(pending)
+  paymentIntentId     String?
+  platformFee         Float         @default(0)
+  driverAmount        Float         @default(0)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  user                User?         @relation("UserBookings", fields: [userId], references: [id])
+  assignedDriver      User?         @relation("DriverBookings", fields: [assignedDriverId], references: [id])
+  vehicleCategory     VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id])
+  stopLocations       StopLocation[]
+  messages            Message[]
+}
+
+// ============================================================
+// BOOKING — STOP LOCATIONS
+// (Array of strings from Mongoose → separate table)
+// ============================================================
+
+model StopLocation {
+  id        String  @id @default(uuid())
+  bookingId String
+  location  String
+
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// MESSAGE
+// ============================================================
+
+model Message {
+  id         String     @id @default(uuid())
+  bookingId  String
+  senderId   String
+  senderRole SenderRole
+  text       String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  booking    Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sender     User       @relation(fields: [senderId], references: [id])
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  id               String   @id @default(uuid())
+  recipientRole    Role
+  recipientUserId  String?
+  title            String
+  message          String
+  type             String   @default("general")
+  isRead           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  recipient        User?    @relation("UserNotifications", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientRole])
+  @@index([recipientUserId])
+  @@index([isRead])
+  @@index([createdAt])
+}
