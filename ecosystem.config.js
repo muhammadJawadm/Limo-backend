@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'Limo-backend',
-      script: 'server.js',            // ✅ root level, not src/
+      script: 'src/server.js',            // ✅ root level, not src/
       watch: true,
       ignore_watch: [
         'node_modules',
