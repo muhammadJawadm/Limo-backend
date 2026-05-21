@@ -93,6 +93,8 @@ model User {
   customerProfile     CustomerProfile?
   driver              Driver?
   notifications       Notification[] @relation("UserNotifications")
+  adminMessagesAsDriver AdminMessage[] @relation("AdminMessageDriver")
+  adminMessagesAsSender AdminMessage[] @relation("AdminMessageSender")
 }
 
 // ============================================================
@@ -494,6 +496,28 @@ model Notification {
   @@index([recipientRole])
   @@index([recipientUserId])
   @@index([isRead])
+  @@index([createdAt])
+}
+
+// ============================================================
+// ADMIN <-> DRIVER CHAT
+// Persistent admin messages targeted at drivers (and visible to admins)
+// ============================================================
+
+model AdminMessage {
+  id            String     @id @default(uuid())
+  driverUserId  String
+  senderId      String
+  senderRole    SenderRole
+  text          String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  driver        User       @relation("AdminMessageDriver", fields: [driverUserId], references: [id], onDelete: Cascade)
+  sender        User       @relation("AdminMessageSender", fields: [senderId], references: [id])
+
+  @@index([driverUserId])
+  @@index([senderId])
   @@index([createdAt])
 }
 

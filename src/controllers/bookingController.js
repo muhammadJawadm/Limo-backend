@@ -3,6 +3,7 @@
 const { prisma }       = require('../config/db');
 const { buildRideFilter } = require('../utils/rideFilters');
 const { transferDriverPayoutForBooking } = require('./paymentController');
+const { createNotificationRecord } = require('../utils/notificationHelpers');
 const bcrypt           = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
 const asyncHandler     = require('../utils/asyncHandler');
@@ -858,6 +859,34 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
     if (updated.paymentStatus === 'paid') {
         payout = await transferDriverPayoutForBooking(updated.id);
     }
+
+    const notifications = [];
+
+    if (booking.userId) {
+        notifications.push(
+            createNotificationRecord({
+                recipientRole: 'customer',
+                recipientUserId: booking.userId,
+                title: 'Ride assigned',
+                message: `Your ride ${booking.confNumber || id} has been assigned to a driver.`,
+                type: 'ride_assigned',
+                meta: { rideId: id, driverId: driver.userId, status: 'assigned', assignedBy: 'admin' },
+            }),
+        );
+    }
+
+    notifications.push(
+        createNotificationRecord({
+            recipientRole: 'driver',
+            recipientUserId: driver.userId,
+            title: 'New ride assigned',
+            message: `You have been assigned to ride ${booking.confNumber || id}.`,
+            type: 'ride_assigned',
+            meta: { rideId: id, customerId: booking.userId || null, status: 'assigned', assignedBy: 'admin' },
+        }),
+    );
+
+    await Promise.all(notifications);
 
     return sendSuccess(res, 200, { data: formatBooking(updated), payout });
 });

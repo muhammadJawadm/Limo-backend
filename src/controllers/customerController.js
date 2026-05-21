@@ -210,6 +210,7 @@ exports.cancelMyRide = asyncHandler(async (req, res) => {
             title:           'Ride cancelled',
             message:         `Your ride ${ride.confNumber || id} was cancelled successfully.`,
             type:            'ride_cancelled',
+            meta: { rideId: id, status: 'cancelled' },
         }),
     ];
 
@@ -221,6 +222,7 @@ exports.cancelMyRide = asyncHandler(async (req, res) => {
                 title:           'Ride cancelled by customer',
                 message:         `Ride ${ride.confNumber || id} was cancelled by the customer.`,
                 type:            'ride_cancelled',
+                meta: { rideId: id, status: 'cancelled', cancelledBy: 'customer' },
             }),
         );
     }

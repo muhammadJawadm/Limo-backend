@@ -985,6 +985,7 @@ exports.assignRideToMe = asyncHandler(async (req, res) => {
                 title: 'Ride assigned',
                 message: `Your ride ${ride.confNumber || id} has been assigned to a driver.`,
                 type: 'ride_assigned',
+                meta: { rideId: id, driverId: req.user.id, status: 'assigned' },
             });
         }
 
@@ -1032,6 +1033,7 @@ exports.updateMyRideStatus = asyncHandler(async (req, res) => {
                 title: 'Ride status updated',
                 message: `Your ride ${ride.confNumber || id} status changed to ${rideStatus}.`,
                 type: 'ride_status_updated',
+                meta: { rideId: id, status: rideStatus, driverId: req.user.id },
             });
         }
 
@@ -1073,6 +1075,7 @@ exports.confirmPickup = asyncHandler(async (req, res) => {
                 title: 'Pickup confirmed',
                 message: `Pickup for your ride ${ride.confNumber || id} has been confirmed.`,
                 type: 'pickup_confirmed',
+                meta: { rideId: id, status: 'ongoing', driverId: req.user.id },
             });
         }
 
@@ -1114,6 +1117,7 @@ exports.cancelTrip = asyncHandler(async (req, res) => {
                 title: 'Ride cancelled by driver',
                 message: `Your ride ${ride.confNumber || id} was cancelled by the driver.`,
                 type: 'ride_cancelled',
+                meta: { rideId: id, status: 'cancelled', cancelledBy: 'driver' },
             });
         }
 

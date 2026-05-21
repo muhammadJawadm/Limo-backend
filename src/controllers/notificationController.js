@@ -3,6 +3,7 @@
 const { prisma }     = require('../config/db');
 const { allowedNotificationRoles, buildNotificationScopeWhere, isAllowedNotificationRole } =
     require('../utils/notificationHelpers');
+const { emitToUser } = require('../socket/emitter');
 const asyncHandler   = require('../utils/asyncHandler');
 const { sendSuccess, sendError, requireAdminGuard } = require('../utils/apiResponse');
 
@@ -123,6 +124,13 @@ exports.createNotification = asyncHandler(async (req, res) => {
         include: notificationInclude,
     });
 
+    if (notification.recipientUserId) {
+        emitToUser(notification.recipientUserId, notification.type, notification.title, notification.message, {
+            notificationId: notification.id,
+            recipientRole: notification.recipientRole,
+        });
+    }
+
     return sendSuccess(res, 201, { data: formatNotification(notification) });
 });
 
@@ -168,6 +176,13 @@ exports.updateNotification = asyncHandler(async (req, res) => {
         },
         include: notificationInclude,
     });
+
+    if (notification.recipientUserId && !notification.isRead) {
+        emitToUser(notification.recipientUserId, notification.type, notification.title, notification.message, {
+            notificationId: notification.id,
+            recipientRole: notification.recipientRole,
+        });
+    }
 
     return sendSuccess(res, 200, { data: formatNotification(notification) });
 });

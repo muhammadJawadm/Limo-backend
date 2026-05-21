@@ -1,4 +1,5 @@
 const { prisma } = require('../config/db');
+const { emitToUser } = require('../socket/emitter');
 
 const allowedNotificationRoles = ['driver', 'customer'];
 
@@ -24,6 +25,7 @@ const createNotificationRecord = async ({
     message,
     type = 'general',
     isRead = false,
+    meta = {},
 }) => {
     if (!isAllowedNotificationRole(recipientRole)) {
         throw new Error('recipientRole must be driver or customer');
@@ -38,6 +40,16 @@ const createNotificationRecord = async ({
             type,
             isRead,
         },
+    }).then((notification) => {
+        if (notification?.recipientUserId) {
+            emitToUser(notification.recipientUserId, notification.type, notification.title, notification.message, {
+                notificationId: notification.id,
+                recipientRole: notification.recipientRole,
+                ...meta,
+            });
+        }
+
+        return notification;
     });
 };
 
