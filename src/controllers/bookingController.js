@@ -118,6 +118,55 @@ const getGuestAccountPayload = (raw) => {
     return { createAccount, firstName, lastName, email, phone, password, location };
 };
 
+const pickDefinedValue = (preferred, fallback) => {
+    return preferred !== undefined && preferred !== null && preferred !== '' ? preferred : fallback;
+};
+
+const getAuthenticatedUserDetails = async (userId) => {
+    if (!userId) return null;
+
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true, email: true, phone: true },
+    });
+};
+
+const hydrateContactDetails = async (req, raw, options = {}) => {
+    const data = { ...raw };
+    const passengerDetails = { ...(data.passengerDetails || {}) };
+    const bookerDetails = { ...(data.bookerDetails || {}) };
+
+    if (req.user) {
+        const user = await getAuthenticatedUserDetails(req.user.id);
+        if (user) {
+            data.passengerDetails = {
+                firstName: pickDefinedValue(passengerDetails.firstName, user.firstName),
+                lastName:  pickDefinedValue(passengerDetails.lastName, user.lastName),
+                email:     pickDefinedValue(passengerDetails.email, user.email),
+                phone:     pickDefinedValue(passengerDetails.phone, user.phone),
+            };
+        }
+        return data;
+    }
+
+    if (options.copyBookerToPassenger) {
+        if (!passengerDetails.firstName && bookerDetails.firstName) passengerDetails.firstName = bookerDetails.firstName;
+        if (!passengerDetails.lastName && bookerDetails.lastName) passengerDetails.lastName = bookerDetails.lastName;
+        if (!passengerDetails.email && bookerDetails.email) passengerDetails.email = bookerDetails.email;
+        if (!passengerDetails.phone && bookerDetails.phone) passengerDetails.phone = bookerDetails.phone;
+
+        if (!bookerDetails.firstName && passengerDetails.firstName) bookerDetails.firstName = passengerDetails.firstName;
+        if (!bookerDetails.lastName && passengerDetails.lastName) bookerDetails.lastName = passengerDetails.lastName;
+        if (!bookerDetails.email && passengerDetails.email) bookerDetails.email = passengerDetails.email;
+        if (!bookerDetails.phone && passengerDetails.phone) bookerDetails.phone = passengerDetails.phone;
+
+        data.passengerDetails = passengerDetails;
+        data.bookerDetails = bookerDetails;
+    }
+
+    return data;
+};
+
 const createBookingUserIfRequested = async (raw) => {
     const accountPayload = getGuestAccountPayload(raw);
     if (!accountPayload.createAccount) {
@@ -285,14 +334,18 @@ const createBookingFromPayload = async (req, raw, options = {}) => {
         accountResult = { userId: req.user.id, user: null, token: null, accountCreated: false, linkedExistingAccount: false };
     }
 
-    const data = buildBookingData(raw);
+    const contactHydratedRaw = await hydrateContactDetails(req, raw, {
+        copyBookerToPassenger: options.allowGuestFlow,
+    });
+
+    const data = buildBookingData(contactHydratedRaw);
     data.userId            = accountResult.userId || undefined;
     data.isGuest           = options.allowGuestFlow ? !accountResult.userId : false;
     data.vehicleCategoryId = vehicleCategoryId;
     data.rideStatus        = data.rideStatus || 'upcoming';
     data.confNumber        = data.confNumber || generateConfNumber();
 
-    const pricing = await calculateBookingPricing(raw, category, stopLocations, options.logLabel || 'createBookingFromPayload');
+    const pricing = await calculateBookingPricing(contactHydratedRaw, category, stopLocations, options.logLabel || 'createBookingFromPayload');
     data.distanceMiles = pricing.distanceMiles;
     data.tripPrice     = pricing.tripPrice;
     data.tollCharges   = pricing.tollCharges;
@@ -566,16 +619,19 @@ exports.updateBookingStep4 = asyncHandler(async (req, res) => {
     if (step2Error) return sendError(res, 400, step2Error);
 
     const raw = sanitizeBookingInput(req.body);
+    const hydratedRaw = await hydrateContactDetails(req, raw, {
+        copyBookerToPassenger: true,
+    });
 
-    const passengerError = validatePassengerDetails(raw);
+    const passengerError = validatePassengerDetails(hydratedRaw);
     if (passengerError) return sendError(res, 400, passengerError);
 
     if (existing.isGuest) {
-        const bookerError = validateBookerDetails(raw);
+        const bookerError = validateBookerDetails(hydratedRaw);
         if (bookerError) return sendError(res, 400, bookerError);
     }
 
-    const booking = await prisma.booking.update({ where: { id }, data: buildBookingData(raw), include: bookingInclude });
+    const booking = await prisma.booking.update({ where: { id }, data: buildBookingData(hydratedRaw), include: bookingInclude });
     return sendSuccess(res, 200, { data: formatBooking(booking) });
 });
 
@@ -662,7 +718,10 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
     const bookerDetails = raw.bookerDetails || {};
     const bookerEmail   = raw.bookerEmail || bookerDetails.email;
     const bookerPhone   = raw.bookerPhone || bookerDetails.phone;
-    if (!bookerEmail || !bookerPhone) {
+    const passengerDetails = raw.passengerDetails || {};
+    const passengerEmail   = raw.passengerEmail || passengerDetails.email;
+    const passengerPhone   = raw.passengerPhone || passengerDetails.phone;
+    if ((!bookerEmail || !bookerPhone) && (!passengerEmail || !passengerPhone)) {
         return sendError(res, 400, 'bookerDetails.email and bookerDetails.phone are required for booking');
     }
 
@@ -675,7 +734,11 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
 
     if (accountResult.error) return sendError(res, 400, accountResult.error);
 
-    const data = buildBookingData(raw);
+    const hydratedRaw = await hydrateContactDetails(req, raw, {
+        copyBookerToPassenger: true,
+    });
+
+    const data = buildBookingData(hydratedRaw);
     data.userId           = accountResult.userId || undefined;
     data.isGuest          = !accountResult.userId;
     data.vehicleCategoryId = vehicleCategoryId;
@@ -686,14 +749,14 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
     let distanceMiles = 0;
     let fareBreakdown = null;
     try {
-        if (raw.pickupLocation && raw.dropoffLocation) {
-            const distanceResult = await calculateDistance(raw.pickupLocation, raw.dropoffLocation, stopLocations);
+        if (hydratedRaw.pickupLocation && hydratedRaw.dropoffLocation) {
+            const distanceResult = await calculateDistance(hydratedRaw.pickupLocation, hydratedRaw.dropoffLocation, stopLocations);
             distanceMiles = distanceResult.distanceMiles;
 
             const tripFare = calculateTotalFare(
-                raw.type,
+                hydratedRaw.type,
                 distanceMiles,
-                raw.hours,
+                hydratedRaw.hours,
                 category.baseFare,
                 category.perMileRate30,
                 category.perMileRate40,
@@ -703,9 +766,9 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
             const tollCharges = calculateToll(distanceMiles);
 
             fareBreakdown = calculateFareBreakdown(
-                raw.type,
+                hydratedRaw.type,
                 distanceMiles,
-                raw.hours,
+                hydratedRaw.hours,
                 category.baseFare,
                 category.perMileRate30,
                 category.perMileRate40,
