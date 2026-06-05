@@ -402,11 +402,6 @@ model Booking {
   childSeatToddler    Int           @default(0)
   childSeatBooster    Int           @default(0)
 
-  // Passenger Details (flattened)
-  passengerFirstName  String?
-  passengerLastName   String?
-  passengerEmail      String?
-  passengerPhone      String?
 
   // Booker Details (flattened)
   bookerFirstName     String?

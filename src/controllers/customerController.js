@@ -7,6 +7,24 @@ const asyncHandler   = require('../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 // ─── GET MY PROFILE ───────────────────────────────────────────────────────────
+const formatCustomerRide = (ride) => ({
+    ...ride,
+    assignedDriver: ride.assignedDriver
+        ? {
+            id: ride.assignedDriver.id,
+            firstName: ride.assignedDriver.firstName,
+            lastName: ride.assignedDriver.lastName,
+            fullName: [
+                ride.assignedDriver.firstName,
+                ride.assignedDriver.lastName,
+            ].filter(Boolean).join(' '),
+            email: ride.assignedDriver.email,
+            phone: ride.assignedDriver.phone,
+        }
+        : null,
+    stopLocations: ride.stopLocations?.map((s) => s.location) || [],
+});
+
 
 exports.getMyProfile = asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
@@ -157,7 +175,7 @@ exports.getMyRides = asyncHandler(async (req, res) => {
         total,
         totalPages: Math.ceil(total / limit),
         tripCount:  total,
-        data:       rides,
+       data: rides.map(formatCustomerRide),
     });
 });
 
@@ -229,5 +247,5 @@ exports.cancelMyRide = asyncHandler(async (req, res) => {
 
     await Promise.all(notifications);
 
-    return sendSuccess(res, 200, { message: 'Ride cancelled successfully', data: updatedRide });
+    return sendSuccess(res, 200, { message: 'Ride cancelled successfully', data: formatCustomerRide(updatedRide) });
 });

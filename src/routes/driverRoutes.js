@@ -27,9 +27,12 @@ router.post('/onboarding/submit', driverController.submitOnboarding);
 router.get('/rides', driverController.getDriverRides);
 router.get('/rides/:id', driverController.getDriverRideById);
 router.get('/rides/:id/details', driverController.getDriverRideDetails);
-router.patch('/rides/:id/assign', driverController.assignRideToMe);
+// router.patch('/rides/:id/assign', driverController.assignRideToMe);
 router.patch('/rides/:id/status', driverController.updateMyRideStatus);
 router.patch('/rides/:id/confirm-pickup', driverController.confirmPickup);
 router.patch('/rides/:id/cancel-trip', driverController.cancelTrip);
+
+router.post('/rides/:id/accept', driverController.acceptAssignedRide);
+router.post('/rides/:id/decline', driverController.declineAssignedRide);
 
 module.exports = router;

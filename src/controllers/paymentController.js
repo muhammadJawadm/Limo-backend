@@ -1,7 +1,7 @@
 'use strict';
 
-const { prisma }     = require('../config/db');
-const asyncHandler   = require('../utils/asyncHandler');
+const { prisma } = require('../config/db');
+const asyncHandler = require('../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ const platformFeePercent = () =>
     parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT) || 20;
 
 const calculateSplitAmounts = (totalAmount) => {
-    const feePercent  = platformFeePercent();
+    const feePercent = platformFeePercent();
     const platformFee = (totalAmount * feePercent) / 100;
     const driverAmount = totalAmount - platformFee;
     return { platformFee, driverAmount, feePercent };
@@ -33,14 +33,12 @@ const getGuestPaymentContact = (body) => ({
         || body.guestEmail
         || body.bookerEmail
         || body.bookerDetails?.email
-        || body.passengerDetails?.email
         || '',
     phone:
         body.phone
         || body.guestPhone
         || body.bookerPhone
         || body.bookerDetails?.phone
-        || body.passengerDetails?.phone
         || '',
 });
 
@@ -54,21 +52,23 @@ const canAccessBookingPayment = (booking, req) => {
     }
 
     const contact = getGuestPaymentContact(req.body || {});
-    const email   = normalizeEmail(contact.email);
-    const phone   = typeof contact.phone === 'string' ? contact.phone.trim() : '';
+    console.log('Guest payment access attempt with contact:', contact);
+    const email = normalizeEmail(contact.email);
+    const phone = typeof contact.phone === 'string' ? contact.phone.trim() : '';
 
     if (!email && !phone) {
         return {
             allowed: false,
-            status:  400,
+            status: 400,
             message: 'email or phone is required to access guest payment',
         };
     }
 
-    const allowedEmails = [booking.bookerEmail, booking.passengerEmail]
+    const allowedEmails = [booking.bookerEmail]
         .map(normalizeEmail)
         .filter(Boolean);
-    const allowedPhones = [booking.bookerPhone, booking.passengerPhone]
+
+    const allowedPhones = [booking.bookerPhone]
         .map((v) => (typeof v === 'string' ? v.trim() : ''))
         .filter(Boolean);
 
@@ -78,7 +78,7 @@ const canAccessBookingPayment = (booking, req) => {
     if (!emailMatches && !phoneMatches) {
         return {
             allowed: false,
-            status:  403,
+            status: 403,
             message: 'Forbidden: guest contact details do not match this booking',
         };
     }
@@ -89,13 +89,13 @@ const canAccessBookingPayment = (booking, req) => {
 // ─── DRIVER PAYOUT (internal) ─────────────────────────────────────────────────
 
 const transferDriverPayoutForBooking = async (bookingId) => {
-    const stripe  = getStripe();
+    const stripe = getStripe();
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
-    if (!booking)                      return { transferred: false, reason: 'booking_not_found' };
+    if (!booking) return { transferred: false, reason: 'booking_not_found' };
     if (booking.paymentStatus !== 'paid') return { transferred: false, reason: 'booking_not_paid' };
-    if (!booking.assignedDriverId)     return { transferred: false, reason: 'driver_not_assigned' };
-    if (!booking.paymentIntentId)      return { transferred: false, reason: 'missing_payment_intent' };
+    if (!booking.assignedDriverId) return { transferred: false, reason: 'driver_not_assigned' };
+    if (!booking.paymentIntentId) return { transferred: false, reason: 'missing_payment_intent' };
 
     const driver = await prisma.driver.findUnique({ where: { userId: booking.assignedDriverId } });
     if (!driver || !driver.stripeAccountId || !driver.stripeOnboarded) {
@@ -108,13 +108,13 @@ const transferDriverPayoutForBooking = async (bookingId) => {
     const { platformFee, driverAmount } = calculateSplitAmounts(totalAmount);
     if (driverAmount <= 0) return { transferred: false, reason: 'invalid_driver_amount' };
 
-    const transferGroup    = `booking_${booking.id}`;
+    const transferGroup = `booking_${booking.id}`;
     const existingTransfers = await stripe.transfers.list({ transfer_group: transferGroup, limit: 10 });
     if (existingTransfers.data.length > 0) {
         return {
             transferred: false,
-            reason:      'already_transferred',
-            transferId:  existingTransfers.data[0].id,
+            reason: 'already_transferred',
+            transferId: existingTransfers.data[0].id,
         };
     }
 
@@ -127,14 +127,14 @@ const transferDriverPayoutForBooking = async (bookingId) => {
 
     const transfer = await stripe.transfers.create(
         {
-            amount:             Math.round(driverAmount * 100),
-            currency:           'usd',
-            destination:        driver.stripeAccountId,
+            amount: Math.round(driverAmount * 100),
+            currency: 'usd',
+            destination: driver.stripeAccountId,
             source_transaction: chargeId,
-            transfer_group:     transferGroup,
+            transfer_group: transferGroup,
             metadata: {
-                bookingId:     booking.id,
-                driverUserId:  booking.assignedDriverId,
+                bookingId: booking.id,
+                driverUserId: booking.assignedDriverId,
             },
         },
         { idempotencyKey: `booking_${booking.id}_driver_payout` },
@@ -142,7 +142,7 @@ const transferDriverPayoutForBooking = async (bookingId) => {
 
     await prisma.booking.update({
         where: { id: booking.id },
-        data:  { platformFee, driverAmount },
+        data: { platformFee, driverAmount },
     });
 
     return { transferred: true, transferId: transfer.id };
@@ -154,7 +154,7 @@ const driverConnect = asyncHandler(async (req, res) => {
     const stripe = getStripe();
 
     // URLs resolved at request-time so FRONTEND_URL is guaranteed to be loaded
-    const returnUrl  = `${process.env.FRONTEND_URL}/driver/onboarding?step=9`;
+    const returnUrl = `${process.env.FRONTEND_URL}/driver/onboarding?step=9`;
     const refreshUrl = `${process.env.FRONTEND_URL}/driver/onboarding?step=9`;
 
     const driver = await prisma.driver.findUnique({ where: { userId: req.user.id } });
@@ -166,15 +166,15 @@ const driverConnect = asyncHandler(async (req, res) => {
         accountId = account.id;
         await prisma.driver.update({
             where: { id: driver.id },
-            data:  { stripeAccountId: accountId },
+            data: { stripeAccountId: accountId },
         });
     }
 
     const accountLink = await stripe.accountLinks.create({
-        account:     accountId,
+        account: accountId,
         refresh_url: refreshUrl,
-        return_url:  returnUrl,
-        type:        'account_onboarding',
+        return_url: returnUrl,
+        type: 'account_onboarding',
     });
 
     return sendSuccess(res, 200, { url: accountLink.url });
@@ -185,34 +185,66 @@ const driverConnect = asyncHandler(async (req, res) => {
 const driverConnectStatus = asyncHandler(async (req, res) => {
     const stripe = getStripe();
 
-    const driver = await prisma.driver.findUnique({ where: { userId: req.user.id } });
+    const driver = await prisma.driver.findUnique({
+        where: { userId: req.user.id },
+    });
+
     if (!driver) return sendError(res, 404, 'Driver not found');
 
     if (!driver.stripeAccountId) {
-        return sendSuccess(res, 200, { onboarded: false });
+        return sendSuccess(res, 200, {
+            onboarded: false,
+            stripeAccountId: null,
+            detailsSubmitted: false,
+            chargesEnabled: false,
+            payoutsEnabled: false,
+            currentlyDue: [],
+            eventuallyDue: [],
+            disabledReason: null,
+        });
     }
 
-    const account    = await stripe.accounts.retrieve(driver.stripeAccountId);
-    const isOnboarded = account.details_submitted;
+    const account = await stripe.accounts.retrieve(driver.stripeAccountId);
+
+    const detailsSubmitted = Boolean(account.details_submitted);
+    const chargesEnabled = Boolean(account.charges_enabled);
+    const payoutsEnabled = Boolean(account.payouts_enabled);
+
+    const currentlyDue = account.requirements?.currently_due || [];
+    const eventuallyDue = account.requirements?.eventually_due || [];
+    const disabledReason = account.requirements?.disabled_reason || null;
+
+    const isOnboarded =
+        detailsSubmitted &&
+        payoutsEnabled &&
+        currentlyDue.length === 0;
 
     if (driver.stripeOnboarded !== isOnboarded) {
         await prisma.driver.update({
             where: { id: driver.id },
-            data:  { stripeOnboarded: isOnboarded },
+            data: { stripeOnboarded: isOnboarded },
         });
     }
 
-    return sendSuccess(res, 200, { onboarded: isOnboarded });
+    return sendSuccess(res, 200, {
+        onboarded: isOnboarded,
+        stripeAccountId: driver.stripeAccountId,
+        detailsSubmitted,
+        chargesEnabled,
+        payoutsEnabled,
+        currentlyDue,
+        eventuallyDue,
+        disabledReason,
+    });
 });
-
 // ─── CREATE PAYMENT INTENT ────────────────────────────────────────────────────
 
 const createPaymentIntent = asyncHandler(async (req, res) => {
-    const stripe      = getStripe();
+    const stripe = getStripe();
     const { bookingId } = req.body;
 
     const booking = await prisma.booking.findUnique({
-        where:   { id: bookingId },
+        where: { id: bookingId },
         include: { assignedDriver: true },
     });
     if (!booking) return sendError(res, 404, 'Booking not found');
@@ -230,14 +262,14 @@ const createPaymentIntent = asyncHandler(async (req, res) => {
     const { platformFee, driverAmount } = calculateSplitAmounts(totalAmount);
 
     const paymentIntent = await stripe.paymentIntents.create({
-        amount:   Math.round(totalAmount * 100),
+        amount: Math.round(totalAmount * 100),
         currency: 'usd',
         metadata: { bookingId: booking.id },
     });
 
     await prisma.booking.update({
         where: { id: bookingId },
-        data:  { platformFee, driverAmount, paymentIntentId: paymentIntent.id },
+        data: { platformFee, driverAmount, paymentIntentId: paymentIntent.id },
     });
 
     return sendSuccess(res, 200, { clientSecret: paymentIntent.client_secret });
@@ -270,7 +302,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
         const updated = await prisma.booking.update({
             where: { id: bookingId },
-            data:  {
+            data: {
                 paymentStatus: 'paid',
                 paymentIntentId,
                 paymentMethodId,
@@ -288,7 +320,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
 
         return sendSuccess(res, 200, {
             message: 'Payment confirmed successfully',
-            status:  updated.paymentStatus,
+            status: updated.paymentStatus,
             payout,
         });
     }
@@ -299,9 +331,9 @@ const confirmPayment = asyncHandler(async (req, res) => {
 // ─── STRIPE WEBHOOK ───────────────────────────────────────────────────────────
 
 const webhook = async (req, res) => {
-    const stripe          = getStripe();
-    const sig             = req.headers['stripe-signature'];
-    const endpointSecret  = process.env.STRIPE_WEBHOOK_SECRET;
+    const stripe = getStripe();
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event;
     try {
@@ -325,7 +357,7 @@ const webhook = async (req, res) => {
 
                     const booking = await prisma.booking.update({
                         where: { id: pi.metadata.bookingId },
-                        data:  {
+                        data: {
                             paymentStatus: 'paid',
                             paymentIntentId: pi.id,
                             paymentMethodId,
@@ -347,18 +379,28 @@ const webhook = async (req, res) => {
                 if (pi.metadata?.bookingId) {
                     await prisma.booking.update({
                         where: { id: pi.metadata.bookingId },
-                        data:  { paymentStatus: 'failed' },
+                        data: { paymentStatus: 'failed' },
                     });
                 }
                 break;
             }
             case 'account.updated': {
                 const account = event.data.object;
-                // updateMany because stripeAccountId is not @unique in the schema
+
+                const detailsSubmitted = Boolean(account.details_submitted);
+                const payoutsEnabled = Boolean(account.payouts_enabled);
+                const currentlyDue = account.requirements?.currently_due || [];
+
+                const isOnboarded =
+                    detailsSubmitted &&
+                    payoutsEnabled &&
+                    currentlyDue.length === 0;
+
                 await prisma.driver.updateMany({
                     where: { stripeAccountId: account.id },
-                    data:  { stripeOnboarded: account.details_submitted },
+                    data: { stripeOnboarded: isOnboarded },
                 });
+
                 break;
             }
             default:
@@ -374,7 +416,7 @@ const webhook = async (req, res) => {
 // ─── REFUND PAYMENT ───────────────────────────────────────────────────────────
 
 const refundPayment = asyncHandler(async (req, res) => {
-    const stripe        = getStripe();
+    const stripe = getStripe();
     const { bookingId } = req.body;
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
@@ -395,7 +437,7 @@ const refundPayment = asyncHandler(async (req, res) => {
 
     await prisma.booking.update({
         where: { id: bookingId },
-        data:  { paymentStatus: 'refunded' },
+        data: { paymentStatus: 'refunded' },
     });
 
     return sendSuccess(res, 200, { message: 'Payment refunded successfully', refund });

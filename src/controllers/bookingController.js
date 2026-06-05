@@ -1,12 +1,12 @@
 'use strict';
 
-const { prisma }       = require('../config/db');
+const { prisma } = require('../config/db');
 const { buildRideFilter } = require('../utils/rideFilters');
 const { transferDriverPayoutForBooking } = require('./paymentController');
 const { createNotificationRecord } = require('../utils/notificationHelpers');
-const bcrypt           = require('bcrypt');
+const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
-const asyncHandler     = require('../utils/asyncHandler');
+const asyncHandler = require('../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 const { EMAIL_REGEX, validatePassengerDetails, validateBookerDetails } = require('../utils/validators');
 const { calculateDistance } = require('../utils/googleMaps');
@@ -33,7 +33,7 @@ const sanitizeBookingInput = (payload, options = {}) => {
 };
 
 const generateConfNumber = () => {
-    const timePart   = Date.now().toString().slice(-6);
+    const timePart = Date.now().toString().slice(-6);
     const randomPart = Math.floor(100 + Math.random() * 900).toString();
     return `CNF-${timePart}${randomPart}`;
 };
@@ -52,7 +52,7 @@ const normalizeBookingDate = (value) => {
 
 const ensureCanEditBooking = (req, booking) => {
     if (req.user) {
-        const isOwner          = booking.userId          === req.user.id;
+        const isOwner = booking.userId === req.user.id;
         const isAssignedDriver = booking.assignedDriverId === req.user.id;
         if (!isOwner && !isAssignedDriver && req.user.role !== 'admin') {
             return { allowed: false, status: 403, message: 'Forbidden: Not authorized to update this booking' };
@@ -66,11 +66,11 @@ const ensureCanEditBooking = (req, booking) => {
 };
 
 const validateStep1Payload = (raw) => {
-    if (!raw.type)             return 'type is required';
-    if (!raw.pickupLocation)   return 'pickupLocation is required';
-    if (!raw.dropoffLocation)  return 'dropoffLocation is required';
-    if (!raw.date)             return 'date is required';
-    if (!raw.time)             return 'time is required';
+    if (!raw.type) return 'type is required';
+    if (!raw.pickupLocation) return 'pickupLocation is required';
+    if (!raw.dropoffLocation) return 'dropoffLocation is required';
+    if (!raw.date) return 'date is required';
+    if (!raw.time) return 'time is required';
     if (raw.type === 'hourly' && (raw.hours === undefined || raw.hours === null)) {
         return 'hours is required for hourly bookings';
     }
@@ -95,25 +95,26 @@ const assertStep2Complete = (booking) => {
 };
 
 const assertStep4Complete = (booking) => {
-    if (!booking.passengerFirstName || !booking.passengerLastName || !booking.passengerEmail || !booking.passengerPhone) {
-        return 'Step 4 is incomplete: passenger details missing';
+    if (
+        !booking.bookerFirstName ||
+        !booking.bookerLastName ||
+        !booking.bookerEmail ||
+        !booking.bookerPhone
+    ) {
+        return 'Booker details are missing';
     }
-    if (booking.isGuest) {
-        if (!booking.bookerFirstName || !booking.bookerLastName || !booking.bookerEmail || !booking.bookerPhone) {
-            return 'Step 4 is incomplete: booker details missing';
-        }
-    }
+
     return null;
 };
 
 const getGuestAccountPayload = (raw) => {
     const accountDetails = raw.accountDetails || {};
-    const firstName  = accountDetails.firstName || raw.accountFirstName || raw.bookerDetails?.firstName || raw.bookerFirstName;
-    const lastName   = accountDetails.lastName  || raw.accountLastName  || raw.bookerDetails?.lastName  || raw.bookerLastName;
-    const email      = accountDetails.email     || raw.accountEmail     || raw.bookerDetails?.email     || raw.bookerEmail;
-    const phone      = accountDetails.phone     || raw.accountPhone     || raw.bookerDetails?.phone     || raw.bookerPhone;
-    const password   = accountDetails.password  || raw.accountPassword  || raw.password;
-    const location   = accountDetails.location  || raw.accountLocation  || raw.location || raw.pickupLocation;
+    const firstName = accountDetails.firstName || raw.accountFirstName || raw.bookerDetails?.firstName || raw.bookerFirstName;
+    const lastName = accountDetails.lastName || raw.accountLastName || raw.bookerDetails?.lastName || raw.bookerLastName;
+    const email = accountDetails.email || raw.accountEmail || raw.bookerDetails?.email || raw.bookerEmail;
+    const phone = accountDetails.phone || raw.accountPhone || raw.bookerDetails?.phone || raw.bookerPhone;
+    const password = accountDetails.password || raw.accountPassword || raw.password;
+    const location = accountDetails.location || raw.accountLocation || raw.location || raw.pickupLocation;
     const createAccount = raw.createAccount === true || Boolean(password);
     return { createAccount, firstName, lastName, email, phone, password, location };
 };
@@ -133,36 +134,23 @@ const getAuthenticatedUserDetails = async (userId) => {
 
 const hydrateContactDetails = async (req, raw, options = {}) => {
     const data = { ...raw };
-    const passengerDetails = { ...(data.passengerDetails || {}) };
     const bookerDetails = { ...(data.bookerDetails || {}) };
 
     if (req.user) {
         const user = await getAuthenticatedUserDetails(req.user.id);
         if (user) {
-            data.passengerDetails = {
-                firstName: pickDefinedValue(passengerDetails.firstName, user.firstName),
-                lastName:  pickDefinedValue(passengerDetails.lastName, user.lastName),
-                email:     pickDefinedValue(passengerDetails.email, user.email),
-                phone:     pickDefinedValue(passengerDetails.phone, user.phone),
+            data.bookerDetails = {
+                firstName: pickDefinedValue(bookerDetails.firstName, user.firstName),
+                lastName: pickDefinedValue(bookerDetails.lastName, user.lastName),
+                email: pickDefinedValue(bookerDetails.email, user.email),
+                phone: pickDefinedValue(bookerDetails.phone, user.phone),
             };
         }
         return data;
     }
 
-    if (options.copyBookerToPassenger) {
-        if (!passengerDetails.firstName && bookerDetails.firstName) passengerDetails.firstName = bookerDetails.firstName;
-        if (!passengerDetails.lastName && bookerDetails.lastName) passengerDetails.lastName = bookerDetails.lastName;
-        if (!passengerDetails.email && bookerDetails.email) passengerDetails.email = bookerDetails.email;
-        if (!passengerDetails.phone && bookerDetails.phone) passengerDetails.phone = bookerDetails.phone;
 
-        if (!bookerDetails.firstName && passengerDetails.firstName) bookerDetails.firstName = passengerDetails.firstName;
-        if (!bookerDetails.lastName && passengerDetails.lastName) bookerDetails.lastName = passengerDetails.lastName;
-        if (!bookerDetails.email && passengerDetails.email) bookerDetails.email = passengerDetails.email;
-        if (!bookerDetails.phone && passengerDetails.phone) bookerDetails.phone = passengerDetails.phone;
-
-        data.passengerDetails = passengerDetails;
-        data.bookerDetails = bookerDetails;
-    }
+    data.bookerDetails = bookerDetails;
 
     return data;
 };
@@ -193,12 +181,12 @@ const createBookingUserIfRequested = async (raw) => {
     const user = await prisma.user.create({
         data: {
             firstName: accountPayload.firstName.trim(),
-            lastName:  accountPayload.lastName.trim(),
-            email:     normalizedEmail,
-            phone:     normalizedPhone,
-            password:  hashedPassword,
-            location:  accountPayload.location ? accountPayload.location.trim() : accountPayload.location,
-            role:      'customer',
+            lastName: accountPayload.lastName.trim(),
+            email: normalizedEmail,
+            phone: normalizedPhone,
+            password: hashedPassword,
+            location: accountPayload.location ? accountPayload.location.trim() : accountPayload.location,
+            role: 'customer',
         },
     });
     return { userId: user.id, user, token: generateToken(user.id), accountCreated: true, linkedExistingAccount: false };
@@ -207,12 +195,11 @@ const createBookingUserIfRequested = async (raw) => {
 const buildBookingData = (payload) => {
     const data = {};
     const directFields = [
-        'type','pickupLocation','dropoffLocation','date','time','hours','vehicleCategoryId',
-        'assignedDriverId','confNumber','rideStatus','totalAmount','flightNumber','noOfPassengers',
-        'luggage','childSeatRequired','isGuest','userId','specialInstructions','paymentStatus',
-        'paymentIntentId','paymentMethodId','cardBrand','chargeId','receiptUrl','paymentConfirmedAt','platformFee','driverAmount','tripPrice','tollCharges','childSeatsFee','otherFees','childSeatInfant',
-        'childSeatToddler','childSeatBooster','passengerFirstName','passengerLastName',
-        'passengerEmail','passengerPhone','bookerFirstName','bookerLastName','bookerEmail','bookerPhone',
+        'type', 'pickupLocation', 'dropoffLocation', 'date', 'time', 'hours', 'vehicleCategoryId',
+        'assignedDriverId', 'confNumber', 'rideStatus', 'totalAmount', 'flightNumber', 'noOfPassengers',
+        'luggage', 'childSeatRequired', 'isGuest', 'userId', 'specialInstructions', 'paymentStatus',
+        'paymentIntentId', 'paymentMethodId', 'cardBrand', 'chargeId', 'receiptUrl', 'paymentConfirmedAt', 'platformFee', 'driverAmount', 'tripPrice', 'tollCharges', 'otherFees', 'childSeatInfant',
+        'childSeatToddler', 'childSeatBooster', 'bookerFirstName', 'bookerLastName', 'bookerEmail', 'bookerPhone',
     ];
     for (const field of directFields) {
         if (payload[field] !== undefined) data[field] = payload[field];
@@ -221,27 +208,22 @@ const buildBookingData = (payload) => {
         data.date = normalizeBookingDate(payload.date);
     }
     if (payload.childSeats) {
-        if (payload.childSeats.infant   !== undefined) data.childSeatInfant   = payload.childSeats.infant;
-        if (payload.childSeats.toddler  !== undefined) data.childSeatToddler  = payload.childSeats.toddler;
-        if (payload.childSeats.booster  !== undefined) data.childSeatBooster  = payload.childSeats.booster;
+        if (payload.childSeats.infant !== undefined) data.childSeatInfant = payload.childSeats.infant;
+        if (payload.childSeats.toddler !== undefined) data.childSeatToddler = payload.childSeats.toddler;
+        if (payload.childSeats.booster !== undefined) data.childSeatBooster = payload.childSeats.booster;
     }
-    if (payload.passengerDetails) {
-        if (payload.passengerDetails.firstName !== undefined) data.passengerFirstName = payload.passengerDetails.firstName;
-        if (payload.passengerDetails.lastName  !== undefined) data.passengerLastName  = payload.passengerDetails.lastName;
-        if (payload.passengerDetails.email     !== undefined) data.passengerEmail     = payload.passengerDetails.email;
-        if (payload.passengerDetails.phone     !== undefined) data.passengerPhone     = payload.passengerDetails.phone;
-    }
+
     if (payload.bookerDetails) {
         if (payload.bookerDetails.firstName !== undefined) data.bookerFirstName = payload.bookerDetails.firstName;
-        if (payload.bookerDetails.lastName  !== undefined) data.bookerLastName  = payload.bookerDetails.lastName;
-        if (payload.bookerDetails.email     !== undefined) data.bookerEmail     = payload.bookerDetails.email;
-        if (payload.bookerDetails.phone     !== undefined) data.bookerPhone     = payload.bookerDetails.phone;
+        if (payload.bookerDetails.lastName !== undefined) data.bookerLastName = payload.bookerDetails.lastName;
+        if (payload.bookerDetails.email !== undefined) data.bookerEmail = payload.bookerDetails.email;
+        if (payload.bookerDetails.phone !== undefined) data.bookerPhone = payload.bookerDetails.phone;
     }
     if (payload.chargesAndFees) {
-        if (payload.chargesAndFees.tripPrice    !== undefined) data.tripPrice    = payload.chargesAndFees.tripPrice;
-        if (payload.chargesAndFees.tollCharges  !== undefined) data.tollCharges  = payload.chargesAndFees.tollCharges;
+        if (payload.chargesAndFees.tripPrice !== undefined) data.tripPrice = payload.chargesAndFees.tripPrice;
+        if (payload.chargesAndFees.tollCharges !== undefined) data.tollCharges = payload.chargesAndFees.tollCharges;
         if (payload.chargesAndFees.childSeatsFee !== undefined) data.childSeatsFee = payload.chargesAndFees.childSeatsFee;
-        if (payload.chargesAndFees.otherFees    !== undefined) data.otherFees    = payload.chargesAndFees.otherFees;
+        if (payload.chargesAndFees.otherFees !== undefined) data.otherFees = payload.chargesAndFees.otherFees;
     }
     return data;
 };
@@ -334,24 +316,36 @@ const createBookingFromPayload = async (req, raw, options = {}) => {
         accountResult = { userId: req.user.id, user: null, token: null, accountCreated: false, linkedExistingAccount: false };
     }
 
-    const contactHydratedRaw = await hydrateContactDetails(req, raw, {
-        copyBookerToPassenger: options.allowGuestFlow,
-    });
+    const contactHydratedRaw = await hydrateContactDetails(req, raw);
+    const bookerDetails = contactHydratedRaw.bookerDetails || {};
 
+    if (!req.user) {
+        if (
+            !bookerDetails.firstName ||
+            !bookerDetails.lastName ||
+            !bookerDetails.email ||
+            !bookerDetails.phone
+        ) {
+            return {
+                error:
+                    'bookerDetails.firstName, bookerDetails.lastName, bookerDetails.email, and bookerDetails.phone are required',
+            };
+        }
+    }
     const data = buildBookingData(contactHydratedRaw);
-    data.userId            = accountResult.userId || undefined;
-    data.isGuest           = options.allowGuestFlow ? !accountResult.userId : false;
+    data.userId = accountResult.userId || undefined;
+    data.isGuest = options.allowGuestFlow ? !accountResult.userId : false;
     data.vehicleCategoryId = vehicleCategoryId;
-    data.rideStatus        = data.rideStatus || 'upcoming';
-    data.confNumber        = data.confNumber || generateConfNumber();
+    data.rideStatus = data.rideStatus || 'upcoming';
+    data.confNumber = data.confNumber || generateConfNumber();
 
     const pricing = await calculateBookingPricing(contactHydratedRaw, category, stopLocations, options.logLabel || 'createBookingFromPayload');
     data.distanceMiles = pricing.distanceMiles;
-    data.tripPrice     = pricing.tripPrice;
-    data.tollCharges   = pricing.tollCharges;
-    data.childSeatsFee = data.childSeatsFee || 0;
-    data.otherFees     = data.otherFees || 0;
-    data.totalAmount   = parseFloat((data.tripPrice + data.tollCharges + data.childSeatsFee + data.otherFees).toFixed(2));
+    data.tripPrice = pricing.tripPrice;
+    data.tollCharges = pricing.tollCharges;
+    data.childSeatsFee = 0;
+    data.otherFees = data.otherFees || 0;
+    data.totalAmount = parseFloat((data.tripPrice + data.tollCharges + data.otherFees).toFixed(2));
 
     const booking = await prisma.booking.create({
         data: { ...data, stopLocations: { create: stopLocations.map((loc) => ({ location: loc })) } },
@@ -368,26 +362,35 @@ const formatBooking = (booking) => {
         // Pricing (at root level)
         tripPrice: booking.tripPrice || 0,
         tollCharges: booking.tollCharges || 0,
-        childSeatsFee: booking.childSeatsFee || 0,
+        childSeatsFee: 0,
         otherFees: booking.otherFees || 0,
         // Nested objects for convenience
         childSeats: {
-            infant:  booking.childSeatInfant,
-            toddler: booking.childSeatToddler,
-            booster: booking.childSeatBooster,
-        },
-        passengerDetails: {
-            firstName: booking.passengerFirstName,
-            lastName:  booking.passengerLastName,
-            email:     booking.passengerEmail,
-            phone:     booking.passengerPhone,
+            infant: booking.childSeatInfant || 0,
+            toddler: booking.childSeatToddler || 0,
+            booster: booking.childSeatBooster || 0,
         },
         bookerDetails: {
             firstName: booking.bookerFirstName,
-            lastName:  booking.bookerLastName,
-            email:     booking.bookerEmail,
-            phone:     booking.bookerPhone,
+            lastName: booking.bookerLastName,
+            email: booking.bookerEmail,
+            phone: booking.bookerPhone,
         },
+
+        assignedDriver: booking.assignedDriver
+            ? {
+                id: booking.assignedDriver.id,
+                firstName: booking.assignedDriver.firstName,
+                lastName: booking.assignedDriver.lastName,
+                fullName: [
+                    booking.assignedDriver.firstName,
+                    booking.assignedDriver.lastName,
+                ].filter(Boolean).join(' '),
+                email: booking.assignedDriver.email,
+                phone: booking.assignedDriver.phone,
+                profilePictureUrl: booking.assignedDriver.driver?.requiredDocuments?.profilePictureUrl || null,
+            }
+            : null,
         // Stripe payment details at root
         paymentMethodId: booking.paymentMethodId || null,
         cardBrand: booking.cardBrand || null,
@@ -400,27 +403,25 @@ const formatBooking = (booking) => {
 
 const bookingInclude = {
     vehicleCategory: true,
-    stopLocations:   true,
-    assignedDriver:  { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-    user:            { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+    stopLocations: true,
+    assignedDriver: { select: { id: true, firstName: true, lastName: true, email: true, phone: true , driver:{select:{requiredDocuments: {select:{profilePictureUrl: true}}}} } },
+    user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
 };
 
 // ─── STEP 1: CREATE BOOKING ───────────────────────────────────────────────────
 
 exports.createBookingStep1 = asyncHandler(async (req, res) => {
-    const raw           = sanitizeBookingInput(req.body, { allowGuest: true });
+    const raw = sanitizeBookingInput(req.body, { allowGuest: true });
     const stopLocations = normalizeStopLocations(raw);
 
     const step1Error = validateStep1Payload(raw);
     if (step1Error) return sendError(res, 400, step1Error);
 
-    if (!req.user && !raw.isGuest) {
-        return sendError(res, 400, 'isGuest must be true for unauthenticated step 1');
-    }
+
 
     const data = buildBookingData(raw);
-    data.userId     = req.user ? req.user.id : undefined;
-    data.isGuest    = !req.user;
+    data.userId = req.user ? req.user.id : undefined;
+    data.isGuest = !req.user;
     data.rideStatus = data.rideStatus || 'upcoming';
     data.confNumber = data.confNumber || generateConfNumber();
 
@@ -459,13 +460,13 @@ exports.updateBookingStep2 = asyncHandler(async (req, res) => {
     const step1Error = assertStep1Complete(existing);
     if (step1Error) return sendError(res, 400, step1Error);
 
-    const raw               = sanitizeBookingInput(req.body);
+    const raw = sanitizeBookingInput(req.body);
     const vehicleCategoryId = raw.vehicleCategory || raw.vehicleCategoryId;
     delete raw.vehicleCategory;
 
-    if (!vehicleCategoryId)                               return sendError(res, 400, 'vehicleCategoryId is required');
+    if (!vehicleCategoryId) return sendError(res, 400, 'vehicleCategoryId is required');
     if (raw.noOfPassengers === undefined || raw.noOfPassengers === null) return sendError(res, 400, 'noOfPassengers is required');
-    if (raw.luggage        === undefined || raw.luggage        === null) return sendError(res, 400, 'luggage is required');
+    if (raw.luggage === undefined || raw.luggage === null) return sendError(res, 400, 'luggage is required');
 
     const category = await prisma.vehicleCategory.findUnique({ where: { id: vehicleCategoryId } });
     if (!category) return sendError(res, 404, 'Vehicle category not found');
@@ -506,15 +507,15 @@ exports.updateBookingStep2 = asyncHandler(async (req, res) => {
 
         const data = buildBookingData(raw);
         data.vehicleCategoryId = vehicleCategoryId;
-        data.distanceMiles     = distanceMiles;
-        data.tripPrice         = tripFare; // fare portion excluding child seats / toll / other fees
-        data.tollCharges       = tollCharges;
-        data.childSeatsFee     = existing.childSeatsFee || 0;
-        data.otherFees         = existing.otherFees || 0;
-        data.totalAmount       = parseFloat((tripFare + tollCharges + (data.childSeatsFee || 0) + (data.otherFees || 0)).toFixed(2));
+        data.distanceMiles = distanceMiles;
+        data.tripPrice = tripFare; // fare portion excluding child seats / toll / other fees
+        data.tollCharges = tollCharges;
+        data.childSeatsFee = 0;
+        data.otherFees = existing.otherFees || 0;
+        data.totalAmount = parseFloat((tripFare + tollCharges + (data.otherFees || 0)).toFixed(2));
 
         const booking = await prisma.booking.update({ where: { id }, data, include: bookingInclude });
-        
+
         return sendSuccess(res, 200, {
             data: formatBooking(booking),
             fareBreakdown,
@@ -527,14 +528,14 @@ exports.updateBookingStep2 = asyncHandler(async (req, res) => {
 
         const data = buildBookingData(raw);
         data.vehicleCategoryId = vehicleCategoryId;
-        data.tripPrice         = category.baseFare;
-        data.tollCharges       = 0; // No toll calculated when distance fails
-        data.childSeatsFee     = existing.childSeatsFee || 0;
-        data.otherFees         = existing.otherFees || 0;
-        data.totalAmount       = parseFloat((category.baseFare + (data.childSeatsFee || 0) + (data.otherFees || 0)).toFixed(2));
+        data.tripPrice = category.baseFare;
+        data.tollCharges = 0; // No toll calculated when distance fails
+        data.childSeatsFee = 0;
+        data.otherFees = existing.otherFees || 0;
+        data.totalAmount = parseFloat((category.baseFare + (data.otherFees || 0)).toFixed(2));
 
         const booking = await prisma.booking.update({ where: { id }, data, include: bookingInclude });
-        
+
         return sendSuccess(res, 200, {
             data: formatBooking(booking),
             warning: `Distance calculation failed (${distanceError}). Using base fare. Distance value was not stored.`,
@@ -558,49 +559,57 @@ exports.updateBookingStep3 = asyncHandler(async (req, res) => {
     const step2Error = assertStep2Complete(existing);
     if (step2Error) return sendError(res, 400, step2Error);
 
-    const raw       = sanitizeBookingInput(req.body);
+    const raw = sanitizeBookingInput(req.body);
     const childSeats = raw.childSeats || {};
 
-    const hasChildSeatsData =
-        raw.childSeatRequired !== undefined ||
-        raw.childSeatInfant   !== undefined ||
-        raw.childSeatToddler  !== undefined ||
-        raw.childSeatBooster  !== undefined ||
-        childSeats.infant   !== undefined   ||
-        childSeats.toddler  !== undefined   ||
-        childSeats.booster  !== undefined;
+    const infantCount =
+        raw.childSeatInfant !== undefined
+            ? raw.childSeatInfant
+            : childSeats.infant !== undefined
+                ? childSeats.infant
+                : existing.childSeatInfant || 0;
 
-    if (!hasChildSeatsData) return sendError(res, 400, 'childSeats info is required');
+    const toddlerCount =
+        raw.childSeatToddler !== undefined
+            ? raw.childSeatToddler
+            : childSeats.toddler !== undefined
+                ? childSeats.toddler
+                : existing.childSeatToddler || 0;
 
-    // Determine new counts (prefer explicit fields, then nested object, then keep existing)
-    const infantCount  = (raw.childSeatInfant  !== undefined) ? raw.childSeatInfant  : (childSeats.infant  !== undefined ? childSeats.infant  : (existing.childSeatInfant  || 0));
-    const toddlerCount = (raw.childSeatToddler !== undefined) ? raw.childSeatToddler : (childSeats.toddler !== undefined ? childSeats.toddler : (existing.childSeatToddler || 0));
-    const boosterCount = (raw.childSeatBooster !== undefined) ? raw.childSeatBooster : (childSeats.booster !== undefined ? childSeats.booster : (existing.childSeatBooster || 0));
+    const boosterCount =
+        raw.childSeatBooster !== undefined
+            ? raw.childSeatBooster
+            : childSeats.booster !== undefined
+                ? childSeats.booster
+                : existing.childSeatBooster || 0;
 
-    // Calculate child seats fee
-    const newChildSeatsFee = parseFloat((infantCount * CHILD_SEAT_RATES.infant + toddlerCount * CHILD_SEAT_RATES.toddler + boosterCount * CHILD_SEAT_RATES.booster).toFixed(2));
-    const prevChildSeatsFee = existing.childSeatsFee || 0;
-
-    // Determine trip price (fare portion) — prefer stored tripPrice, fallback to existing.totalAmount
-    const tripPrice = existing.tripPrice || existing.totalAmount || 0;
+    const tripPrice = existing.tripPrice || 0;
     const tollCharges = existing.tollCharges || 0;
-
-    // New total = tripPrice (fare) + toll - previous child seats fee + new child seats fee + otherFees
     const otherFees = existing.otherFees || 0;
-    const newTotalAmount = parseFloat((tripPrice + tollCharges - prevChildSeatsFee + newChildSeatsFee + otherFees).toFixed(2));
 
-    const payload = buildBookingData(raw);
-    // Ensure child seat counts are set on booking
-    payload.childSeatInfant  = infantCount;
-    payload.childSeatToddler = toddlerCount;
-    payload.childSeatBooster = boosterCount;
-    payload.childSeatsFee    = newChildSeatsFee;
-    payload.tripPrice        = tripPrice;
-    payload.tollCharges      = tollCharges;
-    payload.otherFees        = otherFees;
-    payload.totalAmount      = newTotalAmount;
+    const payload = {
+        childSeatRequired:
+            raw.childSeatRequired !== undefined
+                ? raw.childSeatRequired
+                : infantCount > 0 || toddlerCount > 0 || boosterCount > 0,
 
-    const booking = await prisma.booking.update({ where: { id }, data: payload, include: bookingInclude });
+        childSeatInfant: infantCount,
+        childSeatToddler: toddlerCount,
+        childSeatBooster: boosterCount,
+
+        childSeatsFee: 0,
+        tripPrice,
+        tollCharges,
+        otherFees,
+        totalAmount: parseFloat((tripPrice + tollCharges + otherFees).toFixed(2)),
+    };
+
+    const booking = await prisma.booking.update({
+        where: { id },
+        data: payload,
+        include: bookingInclude,
+    });
+
     return sendSuccess(res, 200, { data: formatBooking(booking) });
 });
 
@@ -619,19 +628,25 @@ exports.updateBookingStep4 = asyncHandler(async (req, res) => {
     if (step2Error) return sendError(res, 400, step2Error);
 
     const raw = sanitizeBookingInput(req.body);
-    const hydratedRaw = await hydrateContactDetails(req, raw, {
-        copyBookerToPassenger: true,
-    });
+    const hydratedRaw = await hydrateContactDetails(req, raw);
 
-    const passengerError = validatePassengerDetails(hydratedRaw);
-    if (passengerError) return sendError(res, 400, passengerError);
+    const bookerDetails = hydratedRaw.bookerDetails || {};
 
-    if (existing.isGuest) {
-        const bookerError = validateBookerDetails(hydratedRaw);
-        if (bookerError) return sendError(res, 400, bookerError);
+    if (
+        !bookerDetails.firstName ||
+        !bookerDetails.lastName ||
+        !bookerDetails.email ||
+        !bookerDetails.phone
+    ) {
+        return sendError(res, 400, 'bookerDetails.firstName, bookerDetails.lastName, bookerDetails.email, and bookerDetails.phone are required');
     }
 
-    const booking = await prisma.booking.update({ where: { id }, data: buildBookingData(hydratedRaw), include: bookingInclude });
+    const booking = await prisma.booking.update({
+        where: { id },
+        data: buildBookingData(hydratedRaw),
+        include: bookingInclude,
+    });
+
     return sendSuccess(res, 200, { data: formatBooking(booking) });
 });
 
@@ -652,7 +667,7 @@ exports.updateBookingStep5 = asyncHandler(async (req, res) => {
     const step4Error = assertStep4Complete(existing);
     if (step4Error) return sendError(res, 400, step4Error);
 
-    const raw  = sanitizeBookingInput(req.body);
+    const raw = sanitizeBookingInput(req.body);
     const data = buildBookingData(raw);
     data.isComplete = true;
 
@@ -678,7 +693,7 @@ exports.createBooking = asyncHandler(async (req, res) => {
 
 exports.createBookingAllInOne = asyncHandler(async (req, res) => {
     const raw = sanitizeBookingInput(req.body, { allowGuest: true });
-    const result = await createBookingFromPayload(req, raw, { allowGuestFlow: true, logLabel: 'createBookingAllInOne' });
+    const result = await createBookingFromPayload(req, raw, { allowGuestFlow: false, logLabel: 'createBookingAllInOne' });
     if (result.error) return sendError(res, 400, result.error);
 
     return sendSuccess(res, 201, {
@@ -686,17 +701,17 @@ exports.createBookingAllInOne = asyncHandler(async (req, res) => {
         fareBreakdown: result.pricing.fareBreakdown,
         distanceMiles: result.pricing.distanceMiles,
         account: result.accountResult.user ? {
-            created:               result.accountResult.accountCreated,
+            created: result.accountResult.accountCreated,
             linkedExistingAccount: result.accountResult.linkedExistingAccount,
-            token:                 result.accountResult.token,
+            token: result.accountResult.token,
             user: {
-                id:        result.accountResult.user.id,
+                id: result.accountResult.user.id,
                 firstName: result.accountResult.user.firstName,
-                lastName:  result.accountResult.user.lastName,
-                email:     result.accountResult.user.email,
-                phone:     result.accountResult.user.phone,
-                location:  result.accountResult.user.location,
-                role:      result.accountResult.user.role,
+                lastName: result.accountResult.user.lastName,
+                email: result.accountResult.user.email,
+                phone: result.accountResult.user.phone,
+                location: result.accountResult.user.location,
+                role: result.accountResult.user.role,
             },
         } : null,
     });
@@ -705,7 +720,7 @@ exports.createBookingAllInOne = asyncHandler(async (req, res) => {
 // ─── CREATE GUEST BOOKING ─────────────────────────────────────────────────────
 
 exports.createGuestBooking = asyncHandler(async (req, res) => {
-    const raw           = sanitizeBookingInput(req.body);
+    const raw = sanitizeBookingInput(req.body);
     const stopLocations = raw.stopLocations || raw.stopLocation || [];
     delete raw.stopLocations;
     delete raw.stopLocation;
@@ -716,12 +731,10 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
     if (!vehicleCategoryId) return sendError(res, 400, 'vehicleCategory is required');
 
     const bookerDetails = raw.bookerDetails || {};
-    const bookerEmail   = raw.bookerEmail || bookerDetails.email;
-    const bookerPhone   = raw.bookerPhone || bookerDetails.phone;
-    const passengerDetails = raw.passengerDetails || {};
-    const passengerEmail   = raw.passengerEmail || passengerDetails.email;
-    const passengerPhone   = raw.passengerPhone || passengerDetails.phone;
-    if ((!bookerEmail || !bookerPhone) && (!passengerEmail || !passengerPhone)) {
+    const bookerEmail = raw.bookerEmail || bookerDetails.email;
+    const bookerPhone = raw.bookerPhone || bookerDetails.phone;
+
+    if (!bookerEmail || !bookerPhone) {
         return sendError(res, 400, 'bookerDetails.email and bookerDetails.phone are required for booking');
     }
 
@@ -734,16 +747,13 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
 
     if (accountResult.error) return sendError(res, 400, accountResult.error);
 
-    const hydratedRaw = await hydrateContactDetails(req, raw, {
-        copyBookerToPassenger: true,
-    });
-
+    const hydratedRaw = await hydrateContactDetails(req, raw);
     const data = buildBookingData(hydratedRaw);
-    data.userId           = accountResult.userId || undefined;
-    data.isGuest          = !accountResult.userId;
+    data.userId = accountResult.userId || undefined;
+    data.isGuest = !accountResult.userId;
     data.vehicleCategoryId = vehicleCategoryId;
-    data.rideStatus       = data.rideStatus || 'upcoming';
-    data.confNumber       = data.confNumber || generateConfNumber();
+    data.rideStatus = data.rideStatus || 'upcoming';
+    data.confNumber = data.confNumber || generateConfNumber();
 
     // Calculate distance and fare if locations available
     let distanceMiles = 0;
@@ -776,21 +786,21 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
             );
 
             data.distanceMiles = distanceMiles;
-            data.tripPrice     = tripFare;
-            data.tollCharges   = tollCharges;
+            data.tripPrice = tripFare;
+            data.tollCharges = tollCharges;
         } else {
-            data.tripPrice   = category.baseFare;
+            data.tripPrice = category.baseFare;
             data.tollCharges = 0;
         }
     } catch (error) {
         console.error('Distance calculation error in createGuestBooking:', error);
-        data.tripPrice   = category.baseFare;
+        data.tripPrice = category.baseFare;
         data.tollCharges = 0;
     }
 
-    data.childSeatsFee = data.childSeatsFee || 0;
-    data.otherFees     = data.otherFees || 0;
-    data.totalAmount   = parseFloat((data.tripPrice + data.tollCharges + data.childSeatsFee + data.otherFees).toFixed(2));
+    data.childSeatsFee = 0;
+    data.otherFees = data.otherFees || 0;
+    data.totalAmount = parseFloat((data.tripPrice + data.tollCharges + data.otherFees).toFixed(2));
 
     const booking = await prisma.booking.create({
         data: { ...data, stopLocations: { create: stopLocations.map((loc) => ({ location: loc })) } },
@@ -802,17 +812,17 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
         fareBreakdown,
         distanceMiles,
         account: accountResult.user ? {
-            created:               accountResult.accountCreated,
+            created: accountResult.accountCreated,
             linkedExistingAccount: accountResult.linkedExistingAccount,
-            token:                 accountResult.token,
+            token: accountResult.token,
             user: {
-                id:        accountResult.user.id,
+                id: accountResult.user.id,
                 firstName: accountResult.user.firstName,
-                lastName:  accountResult.user.lastName,
-                email:     accountResult.user.email,
-                phone:     accountResult.user.phone,
-                location:  accountResult.user.location,
-                role:      accountResult.user.role,
+                lastName: accountResult.user.lastName,
+                email: accountResult.user.email,
+                phone: accountResult.user.phone,
+                location: accountResult.user.location,
+                role: accountResult.user.role,
             },
         } : null,
     });
@@ -821,7 +831,7 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
 // ─── GET MY BOOKINGS ──────────────────────────────────────────────────────────
 
 exports.getMyBookings = asyncHandler(async (req, res) => {
-    const tab   = req.query.tab || 'upcoming';
+    const tab = req.query.tab || 'upcoming';
     const where = { userId: req.user.id, ...buildRideFilter(tab) };
 
     const bookings = await prisma.booking.findMany({ where, include: bookingInclude, orderBy: { createdAt: 'desc' } });
@@ -837,7 +847,7 @@ exports.getBookingById = asyncHandler(async (req, res) => {
     const booking = await prisma.booking.findUnique({ where: { id }, include: bookingInclude });
     if (!booking) return sendError(res, 404, 'Booking not found');
 
-    const isOwner          = booking.userId          === req.user.id;
+    const isOwner = booking.userId === req.user.id;
     const isAssignedDriver = booking.assignedDriverId === req.user.id;
     if (!isOwner && !isAssignedDriver && req.user.role !== 'admin') {
         return sendError(res, 403, 'Forbidden: Not authorized to view this booking');
@@ -854,13 +864,13 @@ exports.updateBooking = asyncHandler(async (req, res) => {
     const existing = await prisma.booking.findUnique({ where: { id } });
     if (!existing) return sendError(res, 404, 'Booking not found');
 
-    const isOwner          = existing.userId          === req.user.id;
+    const isOwner = existing.userId === req.user.id;
     const isAssignedDriver = existing.assignedDriverId === req.user.id;
     if (!isOwner && !isAssignedDriver && req.user.role !== 'admin') {
         return sendError(res, 403, 'Forbidden: Not authorized to update this booking');
     }
 
-    const raw           = sanitizeBookingInput(req.body);
+    const raw = sanitizeBookingInput(req.body);
     const stopLocations = raw.stopLocations || raw.stopLocation;
     delete raw.stopLocations;
     delete raw.stopLocation;
@@ -878,11 +888,11 @@ exports.updateBooking = asyncHandler(async (req, res) => {
             ...(stopLocations !== undefined && {
                 stopLocations: {
                     deleteMany: {},
-                    create:     stopLocations.map((loc) => ({ location: loc })),
+                    create: stopLocations.map((loc) => ({ location: loc })),
                 },
             }),
         },
-        where:   { id },
+        where: { id },
         include: bookingInclude,
     };
 
@@ -901,7 +911,7 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
         return sendError(res, 403, 'Forbidden: Only admin can assign drivers');
     }
 
-    const { id }       = req.params;
+    const { id } = req.params;
     const { driverId } = req.body;
 
     if (!driverId) return sendError(res, 400, 'driverId is required');
@@ -913,8 +923,8 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
     if (!driver) return sendError(res, 404, 'Driver not found');
 
     const updated = await prisma.booking.update({
-        where:   { id },
-        data:    { assignedDriverId: driver.userId },
+        where: { id },
+        data: { assignedDriverId: driver.userId, rideStatus: 'upcoming', },
         include: bookingInclude,
     });
 
@@ -962,7 +972,7 @@ exports.deleteBooking = asyncHandler(async (req, res) => {
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) return sendError(res, 404, 'Booking not found');
 
-    const isOwner          = booking.userId          === req.user.id;
+    const isOwner = booking.userId === req.user.id;
     const isAssignedDriver = booking.assignedDriverId === req.user.id;
     if (!isOwner && !isAssignedDriver && req.user.role !== 'admin') {
         return sendError(res, 403, 'Forbidden: Not authorized to delete this booking');
