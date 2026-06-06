@@ -393,6 +393,7 @@ const formatBooking = (booking) => {
             : null,
         // Stripe payment details at root
         paymentMethodId: booking.paymentMethodId || null,
+        isGuest: booking.isGuest,
         cardBrand: booking.cardBrand || null,
         chargeId: booking.chargeId || null,
         receiptUrl: booking.receiptUrl || null,

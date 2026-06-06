@@ -35,4 +35,7 @@ router.patch('/rides/:id/cancel-trip', driverController.cancelTrip);
 router.post('/rides/:id/accept', driverController.acceptAssignedRide);
 router.post('/rides/:id/decline', driverController.declineAssignedRide);
 
+router.patch('/drivers/:driverId/verify', driverController.adminVerifyDriver)
+router.get('/drivers/:driverId',  driverController.adminGetDriverById)
+
 module.exports = router;
