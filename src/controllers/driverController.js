@@ -309,6 +309,7 @@ const mapRideForDriver = (booking) => {
             ? booking.totalAmount
             : (booking.tripPrice || 0) + (booking.tollCharges || 0) + (booking.otherFees || 0),
         assignedDriverId: booking.assignedDriverId || null,
+        isGuest: booking.isGuest,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         chargesAndFees: {
