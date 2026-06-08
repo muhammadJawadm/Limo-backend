@@ -3,6 +3,7 @@
 
 const express  = require('express');
 const cors     = require('cors');
+const helmet   = require('helmet');
 const http     = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
@@ -40,8 +41,20 @@ app.set('io', io);
 initSocket(io);
 setIo(io);
 
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.ADMIN_URL];
+
 // ── MIDDLEWARE ──────────────────────────────────────────────────
-app.use(cors());
+app.use(helmet());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
 // Stripe webhook must come before express.json()
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), webhook);

@@ -154,10 +154,10 @@ model VehicleCategory {
   classification   VehicleClassification
   luggageCapacity  Int
   passengerCapacity Int
-  baseFare         Float
-  perMileRate30    Float
-  perMileRate40    Float
-  perHour          Float
+  baseFare         Decimal  @db.Decimal(10, 2)
+  perMileRate30    Decimal  @db.Decimal(10, 2)
+  perMileRate40    Decimal  @db.Decimal(10, 2)
+  perHour          Decimal  @db.Decimal(10, 2)
   picture          String
 
   // Relations
@@ -277,6 +277,8 @@ model TrainingModule {
   completed          Boolean @default(false)
 
   driver             Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
 }
 
 // ============================================================
@@ -365,6 +367,8 @@ model Vehicle {
   updatedAt        DateTime              @updatedAt
 
   driver           Driver                @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
 }
 
 // ============================================================
@@ -382,9 +386,9 @@ model Booking {
   hours               Int?
   vehicleCategoryId   String?
   assignedDriverId    String?
-  confNumber          String?
+  confNumber          String?   @unique
   rideStatus          RideStatus    @default(upcoming)
-  totalAmount         Float         @default(0)
+  totalAmount         Decimal       @default(0) @db.Decimal(10, 2)
   flightNumber        String?
   noOfPassengers      Int?          @default(0)
   luggage             Int?          @default(0)
@@ -412,10 +416,10 @@ model Booking {
   distanceMiles       Float?        @default(0)
 
   // Charges and Fees (flattened)
-  tripPrice           Float         @default(0)
-  tollCharges         Float         @default(0)
-  childSeatsFee       Float         @default(0)
-  otherFees           Float         @default(0)
+  tripPrice           Decimal       @default(0) @db.Decimal(10, 2)
+  tollCharges         Decimal       @default(0) @db.Decimal(10, 2)
+  childSeatsFee       Decimal       @default(0) @db.Decimal(10, 2)
+  otherFees           Decimal       @default(0) @db.Decimal(10, 2)
 
   // Payment Info (flattened)
   // Payment Status
@@ -426,8 +430,8 @@ model Booking {
   chargeId            String?
   receiptUrl          String?
   paymentConfirmedAt  DateTime?
-  platformFee         Float         @default(0)
-  driverAmount        Float         @default(0)
+  platformFee         Decimal       @default(0) @db.Decimal(10, 2)
+  driverAmount        Decimal       @default(0) @db.Decimal(10, 2)
 
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
@@ -438,6 +442,13 @@ model Booking {
   vehicleCategory     VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id])
   stopLocations       StopLocation[]
   messages            Message[]
+
+  @@index([userId])
+  @@index([assignedDriverId])
+  @@index([rideStatus])
+  @@index([paymentStatus])
+  @@index([paymentIntentId])
+  @@index([createdAt])
 }
 
 // ============================================================
@@ -448,9 +459,12 @@ model Booking {
 model StopLocation {
   id        String  @id @default(uuid())
   bookingId String
+  sortOrder Int     @default(0)
   location  String
 
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
 
 // ============================================================
@@ -468,6 +482,9 @@ model Message {
 
   booking    Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   sender     User       @relation(fields: [senderId], references: [id])
+
+  @@index([bookingId])
+  @@index([senderId])
 }
 
 // ============================================================

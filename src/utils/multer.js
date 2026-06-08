@@ -1,13 +1,29 @@
 const multer = require('multer');
 
-// Use memory storage to avoid saving files to disk before uploading to Cloudinary
 const storage = multer.memoryStorage();
 
+const ALLOWED_MIME_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+];
+
+const fileFilter = (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed'), false);
+    }
+};
+
 const upload = multer({
-    storage: storage,
+    storage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
+        fileSize: 10 * 1024 * 1024, // 10 MB
     },
+    fileFilter,
 });
 
 module.exports = upload;

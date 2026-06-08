@@ -22,7 +22,6 @@ const sendEmail = async (email, otp) => {
             <p>If you did not request this, ignore this email.</p>
         `,
     });
-    console.log("Email sent successfully");
 };
 
 const sendEmailAdmin = async (mailData) => {
@@ -35,7 +34,6 @@ const sendEmailAdmin = async (mailData) => {
         text: text || message,
         html: html || (message ? `<p>${message}</p>` : undefined),
     });
-    console.log("Email sent successfully");
 };
 
 module.exports = sendEmail;

@@ -305,18 +305,16 @@ const mapRideForDriver = (booking) => {
         specialInstructions: booking.specialInstructions || '',
         flightNumber: booking.flightNumber || '',
         vehicleCategory: booking.vehicleCategory || null,
-        totalAmount: typeof booking.totalAmount === 'number'
-            ? booking.totalAmount
-            : (booking.tripPrice || 0) + (booking.tollCharges || 0) + (booking.otherFees || 0),
+        totalAmount: Number(booking.totalAmount) || (Number(booking.tripPrice) + Number(booking.tollCharges) + Number(booking.otherFees)),
         assignedDriverId: booking.assignedDriverId || null,
         isGuest: booking.isGuest,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         chargesAndFees: {
-            tripPrice: booking.tripPrice || 0,
-            tollCharges: booking.tollCharges || 0,
+            tripPrice: Number(booking.tripPrice) || 0,
+            tollCharges: Number(booking.tollCharges) || 0,
             childSeatsFee: 0,
-            otherFees: booking.otherFees || 0,
+            otherFees: Number(booking.otherFees) || 0,
             paymentStatus: booking.paymentStatus || null,
             paymentIntentId: booking.paymentIntentId || null,
             paymentMethodId: booking.paymentMethodId || null,
@@ -357,17 +355,15 @@ const mapRideDetailsForDriver = (booking) => {
         specialInstructions: booking.specialInstructions || '',
         flightNumber: booking.flightNumber || '',
         vehicleCategory: booking.vehicleCategory || null,
-        totalAmount: typeof booking.totalAmount === 'number'
-            ? booking.totalAmount
-            : (booking.tripPrice || 0) + (booking.tollCharges || 0) + (booking.otherFees || 0),
+        totalAmount: Number(booking.totalAmount) || (Number(booking.tripPrice) + Number(booking.tollCharges) + Number(booking.otherFees)),
         assignedDriverId: booking.assignedDriverId || null,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         chargesAndFees: {
-            tripPrice: booking.tripPrice || 0,
-            tollCharges: booking.tollCharges || 0,
+            tripPrice: Number(booking.tripPrice) || 0,
+            tollCharges: Number(booking.tollCharges) || 0,
             childSeatsFee: 0,
-            otherFees: booking.otherFees || 0,
+            otherFees: Number(booking.otherFees) || 0,
             paymentStatus: booking.paymentStatus || null,
             paymentIntentId: booking.paymentIntentId || null,
             paymentMethodId: booking.paymentMethodId || null,
@@ -379,15 +375,14 @@ const mapRideDetailsForDriver = (booking) => {
 
 exports.getMyOnboarding = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
-    return res.status(200).json({ success: true, data: formatDriver(driver) });
+    if (error) return sendError(res, error.code, error.message);
+    return sendSuccess(res, 200, { data: formatDriver(driver) });
 });
 
 exports.getMyProfile = asyncHandler(async (req, res) => {
     const { error, user, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
-    return res.status(200).json({
-        success: true,
+    if (error) return sendError(res, error.code, error.message);
+    return sendSuccess(res, 200, {
         data: {
             ...buildDriverProfileView(user, driver),
             onboarding: formatDriver(driver),
@@ -397,7 +392,7 @@ exports.getMyProfile = asyncHandler(async (req, res) => {
 
 exports.updateMyPersonalInfo = asyncHandler(async (req, res) => {
     const { error, user } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { firstName, lastName, email, phone, location } = req.body || {};
     const userData = {};
@@ -410,12 +405,12 @@ exports.updateMyPersonalInfo = asyncHandler(async (req, res) => {
         const normalizedEmail = String(email).toLowerCase();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(normalizedEmail)) {
-            return res.status(400).json({ success: false, message: 'Invalid email format' });
+            return sendError(res, 400, 'Invalid email format');
         }
         if (normalizedEmail !== user.email) {
             const existingEmail = await prisma.user.findUnique({ where: { email: normalizedEmail } });
             if (existingEmail) {
-                return res.status(400).json({ success: false, message: 'Email already in use' });
+                return sendError(res, 400, 'Email already in use');
             }
         }
         userData.email = normalizedEmail;
@@ -425,14 +420,14 @@ exports.updateMyPersonalInfo = asyncHandler(async (req, res) => {
         if (phone !== user.phone) {
             const existingPhone = await prisma.user.findUnique({ where: { phone } });
             if (existingPhone) {
-                return res.status(400).json({ success: false, message: 'Phone number already in use' });
+                return sendError(res, 400, 'Phone number already in use');
             }
         }
         userData.phone = phone;
     }
 
     if (Object.keys(userData).length === 0) {
-        return res.status(400).json({ success: false, message: 'No personal info fields provided' });
+        return sendError(res, 400, 'No personal info fields provided');
     }
 
     const updatedUser = await prisma.user.update({
@@ -440,8 +435,7 @@ exports.updateMyPersonalInfo = asyncHandler(async (req, res) => {
         data: userData,
     });
 
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, 200, {
         message: 'Personal information updated',
         data: {
             id: updatedUser.id,
@@ -460,19 +454,19 @@ exports.updateMyPersonalInfo = asyncHandler(async (req, res) => {
 
 exports.getMyOnboardingStep = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { step } = req.params;
     const data = getOnboardingStepData(driver, step);
     if (data === undefined) {
-        return res.status(404).json({ success: false, message: 'Invalid onboarding step' });
+        return sendError(res, 404, 'Invalid onboarding step');
     }
-    return res.status(200).json({ success: true, step, data });
+    return sendSuccess(res, 200, { step, data });
 });
 
 exports.updateCompanyInformation = asyncHandler(async (req, res) => {
     const { error, user, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { companyName, companyType, companyAddress, taxIdentificationNumber, businessRegistrationNumber } = req.body;
 
@@ -498,12 +492,12 @@ exports.updateCompanyInformation = asyncHandler(async (req, res) => {
             : Promise.resolve(),
     ]);
 
-    return res.status(200).json({ success: true, message: 'Company information updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Company information updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateFleetInformation = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const body = req.body;
     const data = {};
@@ -516,12 +510,12 @@ exports.updateFleetInformation = asyncHandler(async (req, res) => {
     if (body.businessClassVansDescription !== undefined) data.businessClassVansDescription = body.businessClassVansDescription;
 
     const updatedDriver = await prisma.driver.update({ where: { id: driver.id }, data, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'Fleet information updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Fleet information updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateFirstChauffeurInformation = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const body = req.body;
     const data = {};
@@ -533,12 +527,12 @@ exports.updateFirstChauffeurInformation = asyncHandler(async (req, res) => {
     if (body.driverLicenseId !== undefined) data.chauffeurDriverLicenseId = body.driverLicenseId;
 
     const updatedDriver = await prisma.driver.update({ where: { id: driver.id }, data, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'First chauffeur information updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'First chauffeur information updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateFirstVehicleInformation = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const body = req.body;
     const data = {};
@@ -554,12 +548,12 @@ exports.updateFirstVehicleInformation = asyncHandler(async (req, res) => {
     if (body.vehicleVIN !== undefined) data.vehicleVIN = body.vehicleVIN;
 
     const updatedDriver = await prisma.driver.update({ where: { id: driver.id }, data, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'First vehicle information updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'First vehicle information updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateRequiredDocuments = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const docData = req.body;
 
@@ -570,16 +564,16 @@ exports.updateRequiredDocuments = asyncHandler(async (req, res) => {
     });
 
     const updatedDriver = await prisma.driver.findUnique({ where: { id: driver.id }, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'Required documents updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Required documents updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updatePartnerTraining = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { modules } = req.body;
     if (!Array.isArray(modules)) {
-        return res.status(400).json({ success: false, message: 'modules must be an array' });
+        return sendError(res, 400, 'modules must be an array');
     }
 
     const completedModules = modules.filter((m) => m.completed === true).length;
@@ -607,12 +601,12 @@ exports.updatePartnerTraining = asyncHandler(async (req, res) => {
     ]);
 
     const updatedDriver = await prisma.driver.findUnique({ where: { id: driver.id }, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'Partner training updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Partner training updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateContractAgreement = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { signed, confirmationAgreement, place } = req.body;
     const data = {};
@@ -621,17 +615,17 @@ exports.updateContractAgreement = asyncHandler(async (req, res) => {
     if (place !== undefined) data.contractPlace = place;
 
     const updatedDriver = await prisma.driver.update({ where: { id: driver.id }, data, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'Contract agreement updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Contract agreement updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updatePaymentInformation = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { stripeAccountId, stripeOnboarded } = req.body;
 
     if (stripeAccountId === undefined && stripeOnboarded === undefined) {
-        return res.status(400).json({ success: false, message: 'stripeAccountId or stripeOnboarded is required' });
+        return sendError(res, 400, 'stripeAccountId or stripeOnboarded is required');
     }
 
     const data = {};
@@ -643,12 +637,12 @@ exports.updatePaymentInformation = asyncHandler(async (req, res) => {
         data,
         include: driverInclude,
     });
-    return res.status(200).json({ success: true, message: 'Stripe payment status updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Stripe payment status updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateAvailability = asyncHandler(async (req, res) => {
     const { error, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const body = req.body;
     const data = {};
@@ -669,12 +663,12 @@ exports.updateAvailability = asyncHandler(async (req, res) => {
     }
 
     const updatedDriver = await prisma.driver.update({ where: { id: driver.id }, data, include: driverInclude });
-    return res.status(200).json({ success: true, message: 'Availability updated', data: formatDriver(updatedDriver) });
+    return sendSuccess(res, 200, { message: 'Availability updated', data: formatDriver(updatedDriver) });
 });
 
 exports.updateOnboardingFields = asyncHandler(async (req, res) => {
     const { error, user, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const body = req.body || {};
     const driverData = {};
@@ -768,10 +762,7 @@ exports.updateOnboardingFields = asyncHandler(async (req, res) => {
         || body.submittedApplication !== undefined
         || body.weeklySchedule !== undefined
     ) {
-        return res.status(400).json({
-            success: false,
-            message: 'requiredDocuments, partnerTraining, contractAgreement, and availability are not supported on this endpoint',
-        });
+        return sendError(res, 400, 'requiredDocuments, partnerTraining, contractAgreement, and availability are not supported on this endpoint');
     }
 
     const ops = [];
@@ -785,18 +776,14 @@ exports.updateOnboardingFields = asyncHandler(async (req, res) => {
     }
 
     if (ops.length === 0) {
-        return res.status(400).json({ success: false, message: 'No onboarding fields provided' });
+        return sendError(res, 400, 'No onboarding fields provided');
     }
 
     const results = await prisma.$transaction(ops);
     const updatedDriver = results.find((result) => result && result.id === driver.id)
         || await prisma.driver.findUnique({ where: { id: driver.id }, include: driverInclude });
 
-    return res.status(200).json({
-        success: true,
-        message: 'Onboarding updated',
-        data: formatDriver(updatedDriver),
-    });
+    return sendSuccess(res, 200, { message: 'Onboarding updated', data: formatDriver(updatedDriver) });
 });
 
 // ─── SUBMIT ONBOARDING ────────────────────────────────────────────────────────
@@ -804,7 +791,7 @@ exports.updateOnboardingFields = asyncHandler(async (req, res) => {
 // Previously accounts were auto-verified; now admin must explicitly approve.
 exports.submitOnboarding = asyncHandler(async (req, res) => {
     const { error, user, driver } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const [updatedDriver] = await Promise.all([
         prisma.driver.update({
@@ -822,8 +809,7 @@ exports.submitOnboarding = asyncHandler(async (req, res) => {
         }),
     ]);
 
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, 200, {
         message: 'Partner onboarding submitted successfully. Your application is under review.',
         data: formatDriver(updatedDriver),
     });
@@ -839,7 +825,7 @@ exports.adminVerifyDriver = asyncHandler(async (req, res) => {
     const { isVerified, reason } = req.body;
 
     if (typeof isVerified !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'isVerified (boolean) is required' });
+        return sendError(res, 400, 'isVerified (boolean) is required');
     }
 
     // Find the driver record
@@ -849,7 +835,7 @@ exports.adminVerifyDriver = asyncHandler(async (req, res) => {
     });
 
     if (!driver) {
-        return res.status(404).json({ success: false, message: 'Driver not found' });
+        return sendError(res, 404, 'Driver not found');
     }
 
     // Update the user's isVerified flag
@@ -870,8 +856,7 @@ exports.adminVerifyDriver = asyncHandler(async (req, res) => {
         meta: { driverId: driver.id, isVerified, reason: reason || null },
     });
 
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, 200, {
         message: isVerified
             ? 'Driver account verified successfully'
             : 'Driver account verification revoked',
@@ -898,11 +883,10 @@ exports.adminGetDriverById = asyncHandler(async (req, res) => {
     });
 
     if (!driver) {
-        return res.status(404).json({ success: false, message: 'Driver not found' });
+        return sendError(res, 404, 'Driver not found');
     }
 
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, 200, {
         data: {
             ...formatDriver(driver),
             user: driver.user,
@@ -914,7 +898,7 @@ exports.adminGetDriverById = asyncHandler(async (req, res) => {
 
 exports.getDriverRides = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
@@ -956,8 +940,7 @@ exports.getDriverRides = asyncHandler(async (req, res) => {
         prisma.booking.count({ where }),
     ]);
 
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, 200, {
         tab,
         page,
         limit,
@@ -969,49 +952,49 @@ exports.getDriverRides = asyncHandler(async (req, res) => {
 
 exports.getDriverRideById = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const ride = await prisma.booking.findUnique({ where: { id }, include: rideInclude });
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
 
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only view rides assigned to you' });
+        return sendError(res, 403, 'You can only view rides assigned to you');
     }
 
-    return res.status(200).json({ success: true, data: mapRideForDriver(ride) });
+    return sendSuccess(res, 200, { data: mapRideForDriver(ride) });
 });
 
 exports.getDriverRideDetails = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const ride = await prisma.booking.findUnique({ where: { id }, include: rideInclude });
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
 
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only view rides assigned to you' });
+        return sendError(res, 403, 'You can only view rides assigned to you');
     }
-    return res.status(200).json({ success: true, data: mapRideDetailsForDriver(ride) });
+    return sendSuccess(res, 200, { data: mapRideDetailsForDriver(ride) });
 });
 
 exports.updateMyRideStatus = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const { rideStatus } = req.body;
     const allowedStatuses = ['upcoming', 'confirmed', 'ongoing', 'completed', 'cancelled'];
 
     if (!allowedStatuses.includes(rideStatus)) {
-        return res.status(400).json({ success: false, message: 'Invalid rideStatus value' });
+        return sendError(res, 400, 'Invalid rideStatus value');
     }
 
     const ride = await prisma.booking.findUnique({ where: { id } });
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only update rides assigned to you' });
+        return sendError(res, 403, 'You can only update rides assigned to you');
     }
 
     const updatedRide = await prisma.booking.update({
@@ -1040,21 +1023,21 @@ exports.updateMyRideStatus = asyncHandler(async (req, res) => {
         });
     }
 
-    return res.status(200).json({ success: true, message: 'Ride status updated', data: mapRideForDriver(updatedRide) });
+    return sendSuccess(res, 200, { message: 'Ride status updated', data: mapRideForDriver(updatedRide) });
 });
 
 exports.confirmPickup = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const ride = await prisma.booking.findUnique({ where: { id } });
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only confirm pickup for rides assigned to you' });
+        return sendError(res, 403, 'You can only confirm pickup for rides assigned to you');
     }
     if (ride.rideStatus === 'completed' || ride.rideStatus === 'cancelled') {
-        return res.status(400).json({ success: false, message: `Cannot confirm pickup for a ${ride.rideStatus} ride` });
+        return sendError(res, 400, `Cannot confirm pickup for a ${ride.rideStatus} ride`);
     }
 
     const updatedRide = await prisma.booking.update({
@@ -1081,21 +1064,21 @@ exports.confirmPickup = asyncHandler(async (req, res) => {
         });
     }
 
-    return res.status(200).json({ success: true, message: 'Pickup confirmed successfully', data: mapRideForDriver(updatedRide) });
+    return sendSuccess(res, 200, { message: 'Pickup confirmed successfully', data: mapRideForDriver(updatedRide) });
 });
 
 exports.cancelTrip = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const ride = await prisma.booking.findUnique({ where: { id } });
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only cancel rides assigned to you' });
+        return sendError(res, 403, 'You can only cancel rides assigned to you');
     }
     if (ride.rideStatus === 'completed' || ride.rideStatus === 'cancelled') {
-        return res.status(400).json({ success: false, message: `Cannot cancel a ${ride.rideStatus} ride` });
+        return sendError(res, 400, `Cannot cancel a ${ride.rideStatus} ride`);
     }
 
     const updatedRide = await prisma.booking.update({
@@ -1122,41 +1105,36 @@ exports.cancelTrip = asyncHandler(async (req, res) => {
         });
     }
 
-    return res.status(200).json({ success: true, message: 'Trip cancelled successfully', data: mapRideForDriver(updatedRide) });
+    return sendSuccess(res, 200, { message: 'Trip cancelled successfully', data: mapRideForDriver(updatedRide) });
 });
 
 exports.uploadOnboardingFile = asyncHandler(async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
+        return sendError(res, 400, 'No file uploaded');
     }
 
     const { folder, docType } = req.body;
     const targetFolder = folder || 'driver_onboarding';
 
-    if (docType) console.log(`Uploading ${docType} for driver ${req.user.id}`);
 
     const result = await uploadToCloudinary(req.file.buffer, targetFolder);
 
-    return res.status(200).json({
-        success: true,
-        url: result.secure_url,
-        publicId: result.public_id,
-    });
+    return sendSuccess(res, 200, { url: result.secure_url, publicId: result.public_id });
 });
 
 exports.acceptAssignedRide = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const ride = await prisma.booking.findUnique({ where: { id }, include: rideInclude });
 
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only accept rides assigned to you' });
+        return sendError(res, 403, 'You can only accept rides assigned to you');
     }
     if (ride.rideStatus === 'completed' || ride.rideStatus === 'cancelled') {
-        return res.status(400).json({ success: false, message: `Cannot accept a ${ride.rideStatus} ride` });
+        return sendError(res, 400, `Cannot accept a ${ride.rideStatus} ride`);
     }
 
     const updatedRide = await prisma.booking.update({
@@ -1183,24 +1161,24 @@ exports.acceptAssignedRide = asyncHandler(async (req, res) => {
         });
     }
 
-    return res.status(200).json({ success: true, message: 'Ride accepted successfully', data: mapRideForDriver(updatedRide) });
+    return sendSuccess(res, 200, { message: 'Ride accepted successfully', data: mapRideForDriver(updatedRide) });
 });
 
 exports.declineAssignedRide = asyncHandler(async (req, res) => {
     const { error } = await getDriverForUser(req.user.id);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return sendError(res, error.code, error.message);
 
     const { id } = req.params;
     const { reason } = req.body || {};
 
     const ride = await prisma.booking.findUnique({ where: { id }, include: rideInclude });
 
-    if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
+    if (!ride) return sendError(res, 404, 'Ride not found');
     if (ride.assignedDriverId !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'You can only decline rides assigned to you' });
+        return sendError(res, 403, 'You can only decline rides assigned to you');
     }
     if (ride.rideStatus === 'completed' || ride.rideStatus === 'cancelled') {
-        return res.status(400).json({ success: false, message: `Cannot decline a ${ride.rideStatus} ride` });
+        return sendError(res, 400, `Cannot decline a ${ride.rideStatus} ride`);
     }
 
     const updatedRide = await prisma.booking.update({
@@ -1223,5 +1201,5 @@ exports.declineAssignedRide = asyncHandler(async (req, res) => {
         meta: { rideId: id, driverId: req.user.id, reason: reason || null },
     });
 
-    return res.status(200).json({ success: true, message: 'Ride declined successfully', data: mapRideForDriver(updatedRide) });
+    return sendSuccess(res, 200, { message: 'Ride declined successfully', data: mapRideForDriver(updatedRide) });
 });

@@ -28,7 +28,7 @@ const validateCapacityFields = (capacity, bodyLuggage, bodyPassengers) => {
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
 exports.createVehicleCategory = asyncHandler(async (req, res) => {
-    //  if (!requireAdminGuard(req, res, 'Forbidden: Only admins can modify vehicle categories')) return;
+    if (!requireAdminGuard(req, res, 'Forbidden: Only admins can modify vehicle categories')) return;
 
     const { name, type, classification, capacity, baseFare, perMileRate30, perMileRate40, perHour, picture } = req.body;
 
@@ -120,8 +120,7 @@ exports.getVehicleCategoryById = asyncHandler(async (req, res) => {
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 
 exports.updateVehicleCategory = asyncHandler(async (req, res) => {
-    // Security guard restored — only admins may update vehicle categories
-    // if (!requireAdminGuard(req, res, 'Forbidden: Only admins can modify vehicle categories')) return;
+    if (!requireAdminGuard(req, res, 'Forbidden: Only admins can modify vehicle categories')) return;
 
     const { id } = req.params;
     const { name, type, classification, capacity, baseFare, perMileRate30, perMileRate40, perHour, picture } = req.body;

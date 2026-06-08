@@ -18,6 +18,9 @@ const CHILD_SEAT_RATES = {
     booster: 8, // per booster seat
 };
 
+// Prisma returns Decimal fields as Decimal objects; convert to JS number for arithmetic
+const toNum = (v) => (v == null ? 0 : Number(v));
+
 // ─── PURE HELPERS ─────────────────────────────────────────────────────────────
 
 const sanitizeBookingInput = (payload, options = {}) => {
@@ -62,18 +65,44 @@ const ensureCanEditBooking = (req, booking) => {
     if (!booking.isGuest) {
         return { allowed: false, status: 401, message: 'Authorization required for this booking' };
     }
-    return { allowed: true };
+    // Guest booking: caller must prove identity via email or phone matching the booking record
+    const body = req.body || {};
+    const email = typeof (body.bookerEmail || body.email) === 'string'
+        ? (body.bookerEmail || body.email).trim().toLowerCase()
+        : '';
+    const phone = typeof (body.bookerPhone || body.phone) === 'string'
+        ? (body.bookerPhone || body.phone).trim()
+        : '';
+
+    if (!email && !phone) {
+        return { allowed: false, status: 400, message: 'bookerEmail or bookerPhone is required to modify a guest booking' };
+    }
+
+    const bookingEmail = (booking.bookerEmail || '').trim().toLowerCase();
+    const bookingPhone = (booking.bookerPhone || '').trim();
+
+    if (email && bookingEmail && email === bookingEmail) return { allowed: true };
+    if (phone && bookingPhone && phone === bookingPhone) return { allowed: true };
+
+    return { allowed: false, status: 403, message: 'Forbidden: contact details do not match this booking' };
 };
 
 const validateStep1Payload = (raw) => {
     if (!raw.type) return 'type is required';
+    if (!['ptop', 'hourly'].includes(raw.type)) return 'type must be ptop or hourly';
     if (!raw.pickupLocation) return 'pickupLocation is required';
     if (!raw.dropoffLocation) return 'dropoffLocation is required';
     if (!raw.date) return 'date is required';
     if (!raw.time) return 'time is required';
-    if (raw.type === 'hourly' && (raw.hours === undefined || raw.hours === null)) {
-        return 'hours is required for hourly bookings';
+    if (raw.type === 'hourly') {
+        if (raw.hours === undefined || raw.hours === null) return 'hours is required for hourly bookings';
+        if (Number(raw.hours) <= 0) return 'hours must be greater than 0';
     }
+    const bookingDate = new Date(raw.date);
+    if (isNaN(bookingDate.getTime())) return 'date must be a valid date';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (bookingDate < today) return 'Booking date must be today or in the future';
     return null;
 };
 
@@ -270,7 +299,7 @@ const calculateBookingPricing = async (raw, category, stopLocations, logLabel) =
         return {
             distanceMiles: 0,
             fareBreakdown: null,
-            tripPrice: category.baseFare,
+            tripPrice: toNum(category.baseFare),
             tollCharges: 0,
         };
     } catch (error) {
@@ -278,7 +307,7 @@ const calculateBookingPricing = async (raw, category, stopLocations, logLabel) =
         return {
             distanceMiles: 0,
             fareBreakdown: null,
-            tripPrice: category.baseFare,
+            tripPrice: toNum(category.baseFare),
             tollCharges: 0,
         };
     }
@@ -512,8 +541,8 @@ exports.updateBookingStep2 = asyncHandler(async (req, res) => {
         data.tripPrice = tripFare; // fare portion excluding child seats / toll / other fees
         data.tollCharges = tollCharges;
         data.childSeatsFee = 0;
-        data.otherFees = existing.otherFees || 0;
-        data.totalAmount = parseFloat((tripFare + tollCharges + (data.otherFees || 0)).toFixed(2));
+        data.otherFees = toNum(existing.otherFees);
+        data.totalAmount = parseFloat((tripFare + tollCharges + data.otherFees).toFixed(2));
 
         const booking = await prisma.booking.update({ where: { id }, data, include: bookingInclude });
 
@@ -529,11 +558,11 @@ exports.updateBookingStep2 = asyncHandler(async (req, res) => {
 
         const data = buildBookingData(raw);
         data.vehicleCategoryId = vehicleCategoryId;
-        data.tripPrice = category.baseFare;
+        data.tripPrice = toNum(category.baseFare);
         data.tollCharges = 0; // No toll calculated when distance fails
         data.childSeatsFee = 0;
-        data.otherFees = existing.otherFees || 0;
-        data.totalAmount = parseFloat((category.baseFare + (data.otherFees || 0)).toFixed(2));
+        data.otherFees = toNum(existing.otherFees);
+        data.totalAmount = parseFloat((data.tripPrice + data.otherFees).toFixed(2));
 
         const booking = await prisma.booking.update({ where: { id }, data, include: bookingInclude });
 
@@ -584,9 +613,9 @@ exports.updateBookingStep3 = asyncHandler(async (req, res) => {
                 ? childSeats.booster
                 : existing.childSeatBooster || 0;
 
-    const tripPrice = existing.tripPrice || 0;
-    const tollCharges = existing.tollCharges || 0;
-    const otherFees = existing.otherFees || 0;
+    const tripPrice = toNum(existing.tripPrice);
+    const tollCharges = toNum(existing.tollCharges);
+    const otherFees = toNum(existing.otherFees);
 
     const payload = {
         childSeatRequired:
@@ -790,12 +819,12 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
             data.tripPrice = tripFare;
             data.tollCharges = tollCharges;
         } else {
-            data.tripPrice = category.baseFare;
+            data.tripPrice = toNum(category.baseFare);
             data.tollCharges = 0;
         }
     } catch (error) {
         console.error('Distance calculation error in createGuestBooking:', error);
-        data.tripPrice = category.baseFare;
+        data.tripPrice = toNum(category.baseFare);
         data.tollCharges = 0;
     }
 

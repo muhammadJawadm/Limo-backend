@@ -18,9 +18,10 @@ const platformFeePercent = () =>
     parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT) || 20;
 
 const calculateSplitAmounts = (totalAmount) => {
+    const amount = Number(totalAmount);
     const feePercent = platformFeePercent();
-    const platformFee = (totalAmount * feePercent) / 100;
-    const driverAmount = totalAmount - platformFee;
+    const platformFee = (amount * feePercent) / 100;
+    const driverAmount = amount - platformFee;
     return { platformFee, driverAmount, feePercent };
 };
 
@@ -52,7 +53,6 @@ const canAccessBookingPayment = (booking, req) => {
     }
 
     const contact = getGuestPaymentContact(req.body || {});
-    console.log('Guest payment access attempt with contact:', contact);
     const email = normalizeEmail(contact.email);
     const phone = typeof contact.phone === 'string' ? contact.phone.trim() : '';
 
@@ -404,7 +404,7 @@ const webhook = async (req, res) => {
                 break;
             }
             default:
-                console.log(`Unhandled event type ${event.type}`);
+                break;
         }
         return res.json({ received: true });
     } catch (error) {
