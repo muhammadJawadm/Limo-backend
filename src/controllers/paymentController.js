@@ -304,6 +304,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
             where: { id: bookingId },
             data: {
                 paymentStatus: 'paid',
+                rideStatus: 'upcoming',
                 paymentIntentId,
                 paymentMethodId,
                 cardBrand,
@@ -313,15 +314,9 @@ const confirmPayment = asyncHandler(async (req, res) => {
             },
         });
 
-        let payout = { transferred: false, reason: 'driver_not_assigned' };
-        if (updated.assignedDriverId) {
-            payout = await transferDriverPayoutForBooking(updated.id);
-        }
-
         return sendSuccess(res, 200, {
             message: 'Payment confirmed successfully',
             status: updated.paymentStatus,
-            payout,
         });
     }
 
@@ -359,6 +354,7 @@ const webhook = async (req, res) => {
                         where: { id: pi.metadata.bookingId },
                         data: {
                             paymentStatus: 'paid',
+                            rideStatus: 'upcoming',
                             paymentIntentId: pi.id,
                             paymentMethodId,
                             cardBrand,
@@ -368,9 +364,6 @@ const webhook = async (req, res) => {
                         },
                     });
 
-                    if (booking.assignedDriverId) {
-                        await transferDriverPayoutForBooking(booking.id);
-                    }
                 }
                 break;
             }

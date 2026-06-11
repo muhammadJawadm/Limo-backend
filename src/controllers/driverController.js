@@ -1023,7 +1023,13 @@ exports.updateMyRideStatus = asyncHandler(async (req, res) => {
         });
     }
 
-    return sendSuccess(res, 200, { message: 'Ride status updated', data: mapRideForDriver(updatedRide) });
+    // Transfer payment to driver only when ride is completed
+    let payout = null;
+    if (rideStatus === 'completed' && updatedRide.paymentStatus === 'paid') {
+        payout = await transferDriverPayoutForBooking(id);
+    }
+
+    return sendSuccess(res, 200, { message: 'Ride status updated', data: mapRideForDriver(updatedRide), payout });
 });
 
 exports.confirmPickup = asyncHandler(async (req, res) => {

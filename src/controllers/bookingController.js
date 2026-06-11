@@ -2,7 +2,6 @@
 
 const { prisma } = require('../config/db');
 const { buildRideFilter } = require('../utils/rideFilters');
-const { transferDriverPayoutForBooking } = require('./paymentController');
 const { createNotificationRecord } = require('../utils/notificationHelpers');
 const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
@@ -32,6 +31,7 @@ const sanitizeBookingInput = (payload, options = {}) => {
     delete data.paymentIntentId;
     delete data.assignedDriverId;
     delete data.totalAmount;
+    delete data.rideStatus;
     return data;
 };
 
@@ -65,26 +65,8 @@ const ensureCanEditBooking = (req, booking) => {
     if (!booking.isGuest) {
         return { allowed: false, status: 401, message: 'Authorization required for this booking' };
     }
-    // Guest booking: caller must prove identity via email or phone matching the booking record
-    const body = req.body || {};
-    const email = typeof (body.bookerEmail || body.email) === 'string'
-        ? (body.bookerEmail || body.email).trim().toLowerCase()
-        : '';
-    const phone = typeof (body.bookerPhone || body.phone) === 'string'
-        ? (body.bookerPhone || body.phone).trim()
-        : '';
 
-    if (!email && !phone) {
-        return { allowed: false, status: 400, message: 'bookerEmail or bookerPhone is required to modify a guest booking' };
-    }
-
-    const bookingEmail = (booking.bookerEmail || '').trim().toLowerCase();
-    const bookingPhone = (booking.bookerPhone || '').trim();
-
-    if (email && bookingEmail && email === bookingEmail) return { allowed: true };
-    if (phone && bookingPhone && phone === bookingPhone) return { allowed: true };
-
-    return { allowed: false, status: 403, message: 'Forbidden: contact details do not match this booking' };
+    return { allowed: true };
 };
 
 const validateStep1Payload = (raw) => {
@@ -365,7 +347,7 @@ const createBookingFromPayload = async (req, raw, options = {}) => {
     data.userId = accountResult.userId || undefined;
     data.isGuest = options.allowGuestFlow ? !accountResult.userId : false;
     data.vehicleCategoryId = vehicleCategoryId;
-    data.rideStatus = data.rideStatus || 'upcoming';
+    data.rideStatus = 'pending_payment';
     data.confNumber = data.confNumber || generateConfNumber();
 
     const pricing = await calculateBookingPricing(contactHydratedRaw, category, stopLocations, options.logLabel || 'createBookingFromPayload');
@@ -452,7 +434,7 @@ exports.createBookingStep1 = asyncHandler(async (req, res) => {
     const data = buildBookingData(raw);
     data.userId = req.user ? req.user.id : undefined;
     data.isGuest = !req.user;
-    data.rideStatus = data.rideStatus || 'upcoming';
+    data.rideStatus = 'pending_payment';
     data.confNumber = data.confNumber || generateConfNumber();
 
     // Calculate distance if locations available (preview for frontend)
@@ -782,7 +764,7 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
     data.userId = accountResult.userId || undefined;
     data.isGuest = !accountResult.userId;
     data.vehicleCategoryId = vehicleCategoryId;
-    data.rideStatus = data.rideStatus || 'upcoming';
+    data.rideStatus = 'pending_payment';
     data.confNumber = data.confNumber || generateConfNumber();
 
     // Calculate distance and fare if locations available
@@ -862,7 +844,7 @@ exports.createGuestBooking = asyncHandler(async (req, res) => {
 
 exports.getMyBookings = asyncHandler(async (req, res) => {
     const tab = req.query.tab || 'upcoming';
-    const where = { userId: req.user.id, ...buildRideFilter(tab) };
+    const where = { userId: req.user.id, rideStatus: { not: 'pending_payment' }, ...buildRideFilter(tab) };
 
     const bookings = await prisma.booking.findMany({ where, include: bookingInclude, orderBy: { createdAt: 'desc' } });
 
@@ -948,6 +930,9 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
 
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) return sendError(res, 404, 'Booking not found');
+    if (booking.rideStatus === 'pending_payment') {
+        return sendError(res, 400, 'Cannot assign driver: booking payment has not been completed');
+    }
 
     const driver = await prisma.driver.findUnique({ where: { id: driverId } });
     if (!driver) return sendError(res, 404, 'Driver not found');
@@ -957,11 +942,6 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
         data: { assignedDriverId: driver.userId, rideStatus: 'upcoming', },
         include: bookingInclude,
     });
-
-    let payout = { transferred: false, reason: 'booking_not_paid' };
-    if (updated.paymentStatus === 'paid') {
-        payout = await transferDriverPayoutForBooking(updated.id);
-    }
 
     const notifications = [];
 
@@ -991,7 +971,7 @@ exports.assignDriverToBooking = asyncHandler(async (req, res) => {
 
     await Promise.all(notifications);
 
-    return sendSuccess(res, 200, { data: formatBooking(updated), payout });
+    return sendSuccess(res, 200, { data: formatBooking(updated) });
 });
 
 // ─── DELETE BOOKING ───────────────────────────────────────────────────────────

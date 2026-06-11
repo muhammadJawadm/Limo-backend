@@ -24,7 +24,7 @@ const buildRideFilter = (tab) => {
                         lt: startOfToday,
                     },
                     rideStatus: {
-                        notIn: ['cancelled'],
+                        notIn: ['cancelled', 'pending_payment'],
                     },
                 },
             ],
@@ -37,7 +37,7 @@ const buildRideFilter = (tab) => {
             gte: startOfToday,
         },
         rideStatus: {
-            notIn: ['completed', 'cancelled'],
+            notIn: ['completed', 'cancelled', 'pending_payment'],
         },
     };
 };

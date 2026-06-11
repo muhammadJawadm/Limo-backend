@@ -106,6 +106,7 @@ exports.getAllVehicleCategories = asyncHandler(async (req, res) => {
 
 exports.getAllBookings = asyncHandler(async (req, res) => {
     const bookings = await prisma.booking.findMany({
+        where: { rideStatus: { not: 'pending_payment' } },
         orderBy: { createdAt: 'desc' },
         include: adminBookingInclude,
     });

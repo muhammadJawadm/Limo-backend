@@ -130,13 +130,13 @@ exports.getMyRides = asyncHandler(async (req, res) => {
 
     const tabFilter = buildRideFilter(tab);
 
-    let where = { userId: req.user.id, ...tabFilter };
+    let where = { userId: req.user.id, rideStatus: { not: 'pending_payment' }, ...tabFilter };
 
     if (req.query.search && req.query.search.trim()) {
         const search = req.query.search.trim();
         where = {
             AND: [
-                { userId: req.user.id, ...tabFilter },
+                { userId: req.user.id, rideStatus: { not: 'pending_payment' }, ...tabFilter },
                 {
                     OR: [
                         { confNumber:      { contains: search, mode: 'insensitive' } },
